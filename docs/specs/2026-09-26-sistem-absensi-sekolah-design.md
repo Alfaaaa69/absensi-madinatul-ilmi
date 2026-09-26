@@ -34,6 +34,7 @@ Setiap keputusan di bawah diambil eksplisit bersama manusia, bukan asumsi.
 | D12 | Deploy ke **shared hosting cPanel** | Keputusan manusia. Mengini batasan di beberapa tempat — lihat [§7](#7-batasan-platform) |
 | D13 | `students.gender` dipakai, `NOT NULL`, nilai `L` atau `P` | Laporan sekolah hampir selalu memisahkan L/P. Import Excel memvalidasi kolom ini wajib terisi |
 | D14 | `day_of_week` 1-5 (Senin-Jumat) | Sekolah hanya beroperasi Senin-Jumat |
+| D15 | Versi Laravel ditentukan **dari versi PHP yang tersedia**, bukan "terbaru" | Laravel 13 (rilis 2026-03-17) butuh PHP ≥ 8.3. Laravel 12 (PHP 8.2-8.5) sudah **selesai masa bug-fix** 2026-08-13 dan hanya dapat security-fix sampai 2027-02-24. Proyek ini baru, jadi targetkan major terbaru yang bisa jalan di cPanel. Lihat [§7](#gate-sebelum-koding) |
 
 Tidak ada keputusan yang masih terbuka. Semua pertanyaan yang muncul saat desain sudah dijawab dan tercatat di atas.
 
@@ -166,7 +167,7 @@ Scoping terjadi **hanya** di dalam Query Object dan Policy. Blade/Livewire view 
 | `ClassPolicy::viewRecap` | Admin: semua kelas. Wali kelas: hanya `homeroom_teacher_id = user.id` **pada tahun ajaran terpilih**. Guru: **tidak punya akses** (dia memakai `TeacherSubjectRecapQuery`) |
 | `StudentPolicy::view` | Admin: semua. Guru: read-only siswa di kelas yang dia ajar |
 | `StudentPolicy` (mutasi) | Admin saja |
-| `AttendancePolicy::update` | Guru: `schedule.teacher_id = user.id` **dan** `date >= today()->subDay()`. Admin: semua, kapan saja |
+| `AttendancePolicy::update` | Guru: `schedule.teacher_id = user.id` **dan** `today()->subDay() <= date <= today()`. Rentang tertutup — guru tidak bisa mengedit ke masa depan maupun ke masa lalu lebih dari 1 hari. Admin: semua, kapan saja |
 
 Aturan edit berlandasan [D5](#keputusan-desain): basisnya adalah **jadwal yang dia ajar**, bukan `recorded_by`-nya. Ini membolehkan guru asli mengoreksi absensi yang diinput guru pengganti — skenario yang sudah dipertimbangkan di `erd.MD:61` (`recorded_by` bisa berbeda dari `schedules.teacher_id`).
 
@@ -301,7 +302,14 @@ Shared hosting cPanel ([D12](#keputusan-desain)). Penyesuaian wajib:
 
 Dua hal harus dicek di cPanel **sebelum** satu baris kode ditulis, karena keduanya bisa membatalkan seluruh rencana:
 
-1. **Versi PHP** ([R1](#12-risiko)) — di bawah 8.2 tidak ada Laravel yang bisa jalan
+1. **Versi PHP** ([R1](#12-risiko)) — menentukan versi Laravel yang boleh dipakai (D15). Di bawah 8.2 tidak ada Laravel yang bisa jalan:
+
+   | PHP di cPanel | Major Laravel | Alasan |
+   |---|---|---|
+   | ≥ 8.3 | `^13.0` | Masih dapat bug-fix sampai Q3 2027, security sampai 2028-03-17. Pilihan utama. |
+   | 8.2 | `^12.0` | Hanya security-fix, berakhir 2027-02-24. Dipakai hanya karena tidak ada pilihan lain. |
+
+   Kalau cPanel ternyata hanya menyediakan PHP 8.2, naikkan ke 8.3 lewat **MultiPHP Manager** — jangan mengunci diri ke major yang akan mati dalam 5 bulan.
 2. **`upload_max_filesize` / `post_max_size`** ([R4](#12-risiko)) — harus cukup untuk file Excel siswa
 
 ### Urutan deploy
@@ -382,22 +390,22 @@ Tidak dikerjakan di v1 (masih di `PRD` §4.2 dan §9 sebagai rekomendasi):
 
 ## 11. Hubungan dengan dokumen lain
 
-Spec ini menggantikan beberapa bagian dari dokumen lama. Saat implementasi, dokumen lama perlu diperbarui:
+Spec ini menggantikan beberapa bagian dari dokumen lama. Semua baris di bawah **sudah dieksekusi** pada 2026-09-26 — kolom "Baris" mengacu pada posisi di dokumen lama *sebelum* diperbarui.
 
-| Dokumen | Baris | Aksi |
-|---|---|---|
-| `docs/CLAUDE.MD` | — | **Pindahkan ke root project** agar terbaca otomatis oleh coding agent |
-| `docs/CLAUDE.MD` | 29 | Salah. Migration **belum** ada. Tulisan ini membuat agent mengira tabel sudah ada dan tidak membuat migration sama sekali |
-| `docs/CLAUDE.MD` | 44 | "cukup `WHERE date BETWEEN`" belum cukup — perlu validasi rentang tahun ajaran (§4) |
-| `docs/CLAUDE.MD` | 11 | Tambahkan library PDF; `Laravel Excel` tidak bisa export PDF |
-| `docs/CLAUDE.MD` | 15 | Tambahkan aturan login via NUPTK dan registrasi dimatikan |
-| `docs/PRD` | 20 | Kontradiksi. "tidak ada peran/akun terpisah untuk admin" bertentangan dengan tabel peran di baris 16 dan dengan `CLAUDE.md`. Jalur login dipecah lewat kolom `role` pada `users` yang sama |
-| `docs/PRD` | 30 | Scope menyebut export PDF, tech stack tidak menyebut library-nya |
-| `docs/PRD` | 115 | "Setup hosting 0.5 hari" tidak realistis untuk cPanel pertama kali; estimasi 1-1.5 hari |
-| `docs/PRD` | 116 | Testing bukan hanya manual — lihat §8 |
-| `docs/erd.MD` | 35, 47 | Kolom `day`, `role`, dan `status` diubah dari string ke enum/tinyint; entitas `USERS` belum punya `password` dan `is_active` |
-| `docs/erd.MD` | 24-25 | `HOMEROOM_TEACHER_ID` harus nullable |
-| `docs/erd.MD` | seluruh | Tambah entitas `ACADEMIC_YEARS` dan kolom soft delete |
+| Dokumen | Baris | Aksi | Status |
+|---|---|---|---|
+| `docs/CLAUDE.MD` | — | **Pindahkan ke root project** agar terbaca otomatis oleh coding agent | Selesai — sekarang `CLAUDE.MD` di root |
+| `docs/CLAUDE.MD` | 29 | Salah. Migration **belum** ada. Tulisan ini membuat agent mengira tabel sudah ada dan tidak membuat migration sama sekali | Selesai |
+| `docs/CLAUDE.MD` | 44 | "cukup `WHERE date BETWEEN`" belum cukup — perlu validasi rentang tahun ajaran (§4) | Selesai |
+| `docs/CLAUDE.MD` | 11 | Tambahkan library PDF; `Laravel Excel` tidak bisa export PDF | Selesai |
+| `docs/CLAUDE.MD` | 15 | Tambahkan aturan login via NUPTK dan registrasi dimatikan | Selesai |
+| `docs/PRD` | 20 | Kontradiksi. "tidak ada peran/akun terpisah untuk admin" bertentangan dengan tabel peran di baris 16 dan dengan `CLAUDE.md`. Jalur login dipecah lewat kolom `role` pada `users` yang sama | Selesai |
+| `docs/PRD` | 30 | Scope menyebut export PDF, tech stack tidak menyebut library-nya | Selesai |
+| `docs/PRD` | 115 | "Setup hosting 0.5 hari" tidak realistis untuk cPanel pertama kali; estimasi 1-1.5 hari | Selesai |
+| `docs/PRD` | 116 | Testing bukan hanya manual — lihat §8 | Selesai |
+| `docs/erd.MD` | 35, 47 | Kolom `day`, `role`, dan `status` diubah dari string ke enum/tinyint; entitas `USERS` belum punya `password` dan `is_active` | Selesai |
+| `docs/erd.MD` | 24-25 | `HOMEROOM_TEACHER_ID` harus nullable | Selesai |
+| `docs/erd.MD` | seluruh | Tambah entitas `ACADEMIC_YEARS` dan kolom soft delete | Selesai |
 
 ## 12. Risiko
 

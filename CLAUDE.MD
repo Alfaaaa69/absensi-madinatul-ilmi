@@ -2,6 +2,8 @@
 
 Context project untuk AI coding agent. Baca file ini, lalu `docs/specs/2026-09-26-sistem-absensi-sekolah-design.md`, lalu `docs/PRD-Sistem-Absensi-Sekolah.md` sebelum mengerjakan task apapun.
 
+Rencana implementasi yang sudah dipecah per fase ada di `docs/specs/plans/`. Eksekusi plan itu dengan skill `superpowers:executing-plans` atau `superpowers:subagent-driven-development` — jangan mulaingoding dari spec langsung.
+
 ## Tentang project
 Sistem absensi sekolah berbasis web untuk kegiatan PKM (Pengabdian kepada Masyarakat), dipakai oleh satu sekolah mitra. Detail lengkap requirement, scope, dan user flow ada di `docs/PRD-Sistem-Absensi-Sekolah.md` — jangan asumsikan fitur di luar yang tertulis di situ tanpa konfirmasi.
 
