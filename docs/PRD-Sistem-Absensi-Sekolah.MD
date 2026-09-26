@@ -17,7 +17,7 @@ Sekolah mitra kegiatan PKM (Pengabdian kepada Masyarakat) masih menggunakan abse
 | Guru | Mengajar satu atau lebih kelas | Input absensi sesuai jadwal mengajarnya sendiri, lihat rekap kehadiran bulanan untuk jadwal/kelas yang diajarnya |
 | Wali kelas | Guru yang juga jadi penanggung jawab 1 kelas tertentu | Sama seperti guru, ditambah akses rekap harian & bulanan lintas mapel untuk kelas yang diwalikan |
 
-Catatan: tidak ada peran/akun terpisah untuk admin — dibedakan lewat kolom `role` pada tabel `users` yang sama dengan guru.
+Catatan: tidak ada tabel terpisah per peran. Semua pengguna ada di satu tabel `users`, dibedakan lewat kolom `role` yang bernilai `admin` atau `guru`. Wali kelas bukan role tersendiri — itu guru biasa yang `id`-nya ditunjuk sebagai `classes.homeroom_teacher_id`, dan statusnya dicek lewat relasi, bukan kolom role.
 
 ## 4. Lingkup (scope)
 
@@ -76,9 +76,14 @@ Relasi kunci:
 - Data kehadiran tersimpan terstruktur dan bisa ditelusuri per periode
 
 ## 8. Tech stack
-- Backend & frontend: Laravel + Livewire
-- Export laporan: Laravel Excel
-- Database: sesuai konvensi Laravel (MySQL/PostgreSQL), primary key UUID
+- Backend & frontend: Laravel + Livewire (starter kit resmi Laravel, bukan Jetstream/Breeze)
+- Export laporan: Laravel Excel untuk Excel, library PDF terpisah untuk PDF
+- Database: MySQL, primary key UUID
+- Testing: Pest
+- Auth: login memakai NUPTK, bukan email. Registrasi dimatikan, reset password lewat admin
+- Deploy: shared hosting cPanel (PHP >= 8.2)
+
+Skema database, role & scoping, dan batasan platform yang berlaku sudah dikunci di `docs/superpowers/specs/2026-09-26-sistem-absensi-sekolah-design.md`. Kalau dokumen ini berbeda dengan spec, **spec yang menang**.
 
 ## 9. Rekomendasi pengembangan lanjutan
 - Portal login orang tua untuk memantau kehadiran anak
@@ -87,36 +92,43 @@ Relasi kunci:
 
 ## 10. Task breakdown
 
-**Fase 1 — Setup & fondasi (3-4 hari)**
-- Setup project Laravel + Livewire, konfigurasi environment (0.5 hari)
-- Migration & model semua tabel sesuai ERD (1 hari)
-- Autentikasi (login, role admin/guru) (1 hari)
-- Seeder data dummy untuk testing (0.5 hari)
+Rincian ini sudah superseded oleh spec §9, yang mengunci skema, scope, dan estimasi. Yang berikut adalah versi yang sudah disesuaikan.
 
-**Fase 2 — Manajemen data master (3-4 hari)**
-- CRUD kelas (0.5 hari)
-- CRUD mata pelajaran (0.5 hari)
-- CRUD jadwal pelajaran, relasi kelas-mapel-guru (1 hari)
-- CRUD siswa, termasuk assign wali kelas ke kelas (1 hari)
+**Fase 0 — Prasyarat (0.5 hari)**
+- Gate di cPanel: cek versi PHP (wajib >= 8.2) dan limit upload. **Stop bila PHP < 8.2** — tidak ada Laravel yang bisa jalan
 
-**Fase 3 — Fitur inti absensi (5-6 hari)**
-- Dashboard guru, menampilkan jadwal hari ini (1 hari)
-- Form input absensi per jadwal, Livewire component (1.5 hari)
-- Validasi & logic submit absensi (0.5 hari)
-- Dashboard wali kelas, tab "Jadwal saya" + "Kelas saya" (1.5 hari)
-- Filter periode harian/bulanan di tab "Kelas saya" wali kelas, dan rekap bulanan guru untuk mapel yang diajar (1 hari)
+**Fase 1 — Setup & fondasi (3.5 hari)**
+- Setup project Laravel + Livewire starter kit, konfigurasi environment termasuk `APP_TIMEZONE=Asia/Jakarta` dan `QUEUE_CONNECTION=sync` (0.5 hari)
+- Migration & model 7 tabel sesuai spec §3 (1 hari)
+- Empat Policy (Schedule, Class, Student, Attendance) — **diuji dulu** (0.5 hari)
+- `AttendanceRecorder` service, 3 Query Object rekap, `RecapExporter` (0.5 hari)
+- Seeder data dummy: 1 admin, 5 guru, 1 tahun ajaran, 7 kelas, 8 mapel, ~35 jadwal, 200 siswa (0.5 hari)
 
-**Fase 4 — Laporan & rekap (2-3 hari)**
-- Halaman rekap admin, filter periode & kelas (1 hari)
-- Export ke Excel/PDF dengan Laravel Excel (1 hari)
+**Fase 2 — Manajemen data master (4 hari)**
+- CRUD tahun ajaran, kelas (+ assign wali kelas), mata pelajaran (1.5 hari)
+- CRUD jadwal pelajaran + deteksi bentrok jam guru (1 hari)
+- CRUD siswa + soft delete/restore, import Excel (1.5 hari)
 
-**Fase 5 — Testing, deploy & dokumentasi (3-4 hari)**
-- Testing manual seluruh flow: guru, wali kelas, admin (1 hari)
-- Setup hosting & deploy (0.5 hari)
-- Pelatihan penggunaan ke guru/staf sekolah mitra (0.5 hari)
-- Dokumentasi untuk laporan PKM (1 hari)
+**Fase 3 — Fitur inti absensi (4.5 hari)**
+- Autentikasi: login via NUPTK, registrasi dimatikan, reset password via admin (0.5 hari)
+- Dashboard guru, menampilkan jadwal hari ini (0.5 hari)
+- Form input absensi + tandai-semua-hadir + kolom alasan kondisional (1.5 hari)
+- Dashboard wali kelas, tab "Jadwal saya" + "Kelas saya" + drill-down per siswa (1.5 hari)
+- Rekap bulanan guru untuk mapel yang diajar + validasi periode terhadap tahun ajaran (0.5 hari)
 
-Total estimasi: sekitar 16-21 hari kerja (part-time, ~4-6 minggu kalender).
+**Fase 4 — Laporan & rekap (3.5 hari)**
+- Halaman laporan admin, filter periode & kelas (1 hari)
+- Drill-down riwayat per siswa (0.5 hari)
+- Export ke Excel & PDF dari sumber data yang sama dengan tampilan layar (1.5 hari)
+- Halaman laporan wali kelas (0.5 hari)
+
+**Fase 5 — Testing, deploy & dokumentasi (4 hari)**
+- Test otomatis Pest: scoping per role, integritas batch absensi, validasi periode (2 hari)
+- Setup hosting cPanel & deploy + dry-run di lokal (1 hari)
+- SOP / manual penggunaan untuk sekolah mitra (0.5 hari)
+- Dokumentasi untuk laporan PKM (0.5 hari)
+
+Total estimasi: sekitar **20 hari kerja** (part-time, ~4-5 minggu kalender).
 
 ## 11. Catatan alur kerja dengan AI agent
 Pengembangan dilakukan dengan bantuan AI coding agent, dengan pendekatan berikut:

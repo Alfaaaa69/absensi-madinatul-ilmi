@@ -12,7 +12,7 @@ Spec ini disusun dari review dokumen awal + brainstorming bersama manusia. Dokum
 
 Sistem absensi harian untuk satu sekolah mitra PKM. Laravel + Livewire, MySQL, deploy di shared hosting cPanel. Guru input absensi per jam pelajaran, wali kelas memantau kelasnya lintas semua mata pelajaran, admin mengelola data master dan laporan.
 
-Estimasi **20-26 hari kerja part-time (~5-7 minggu kalender)**.
+Estimasi **20 hari kerja part-time (~4-5 minggu kalender)**.
 
 ## 2. Keputusan desain
 
@@ -22,21 +22,20 @@ Setiap keputusan di bawah diambil eksplisit bersama manusia, bukan asumsi.
 |---|---|---|
 | D1 | Proyek dimulai dari nol (`composer create-project`) | Folder repositori hanya berisi `docs/`; belum ada kode |
 | D2 | Kelas **per tahun ajaran** (Model B) — tabel `classes` punya `academic_year_id` | Jadwal & guru pengajar berbeda tiap tahun. Kelas yang sama di tahun berbeda = baris berbeda, sehingga laporan tidak mungkin tercampur |
-| D3 | `schedules.day` (string) → `day_of_week` (tinyint, 1=Senin) | String "Senin" butuh tabel mapping dan tidak bisa di-query langsung untuk "jadwal hari ini" |
+| D3 | `schedules.day` (string) → `day_of_week` (tinyint 1=Senin..5=Jumat) | String "Senin" butuh tabel mapping dan tidak bisa di-query langsung untuk "jadwal hari ini". Sekolah hanya beroperasi Senin-Jumat, jadi 1-5 sudah pasti.
 | D4 | 4 status absensi: `hadir`, `izin`, `sakit`, `alpa` | Tetap sesuai PRD. Alasan (`note`) opsional — memaksa alasan menambah friksi tanpa manfaat sebanding |
 | D5 | Guru boleh edit absensi **jadwal yang dia ajar**, maksimal **1 hari ke belakang**. Admin bebas kapan saja | Kesalahan input biasanya ketahuan keesokan pagi. Batas ini menjaga laporan bulanan tetap bisa dipercaya setelah turun ke kepala sekolah |
-| D6 | **NUPTK adalah identitas login untuk semua user termasuk admin** | Ada di dokumen resmi guru, hafal, tidak pernah berubah. Email sekolah sering ter-reset. Admin dianggap juga memiliki NUPTK — lihat [risiko R1](#risiko) |
+| D6 | **NUPTK adalah identitas login untuk semua user termasuk admin** | Ada di dokumen resmi guru, hafal, tidak pernah berubah. Email sekolah sering ter-reset. Dikonfirmasi 2026-09-26: admin sekolah **memiliki** NUPTK, jadi satu kolom `nuptk` cukup untuk semua user |
 | D7 | Halaman **registrasi dimatikan**; hanya admin yang membuat akun | Sistem tertutup. Mencegah siapa pun mendaftar jadi guru |
 | D8 | "Lupa password" dimatikan — reset dilakukan admin dari menu user | 20 user internal, lebih andal daripada email yang sering gagal terkirim |
 | D9 | Scoping di **Query Object per use-case**, bukan di dalam Livewire component | Logika scoping dipakai 4 tempat. Ditulis terpisah = pasti akan tidak sinkron, dan PDF bisa berbeda dari layar |
 | D10 | Livewire starter kit resmi Laravel | Ringan, sudah berisi auth + layout. Jetstream membawa bloat (API token, teams, 2FA) yang tidak dipakai |
 | D11 | 4 fitur tambahan masuk v1: tandai-semua-hadir, import Excel siswa, batas window edit, riwayat per siswa | Tanpa import Excel, 200+ siswa diinput manual. Tanpa batas edit, data bisa berubah-ubah |
 | D12 | Deploy ke **shared hosting cPanel** | Keputusan manusia. Mengini batasan di beberapa tempat — lihat [§7](#7-batasan-platform) |
+| D13 | `students.gender` dipakai, `NOT NULL`, nilai `L` atau `P` | Laporan sekolah hampir selalu memisahkan L/P. Import Excel memvalidasi kolom ini wajib terisi |
+| D14 | `day_of_week` 1-5 (Senin-Jumat) | Sekolah hanya beroperasi Senin-Jumat |
 
-### Keputusan yang masih terbuka
-
-- **[O1] `students.gender`** — masuk untuk laporan karena laporan sekolah hampir selalu memisahkan L/P, tapi tidak diminta. Kandidat untuk dibuang.
-- **[O2] Apakah ada hari Sabtu?** Draft di bawah memakai `day_of_week` 1-6. Kalau sekolah hanya Senin-Jumat, ubah ke 1-5 dan tolak Sabtu di form.
+Tidak ada keputusan yang masih terbuka. Semua pertanyaan yang muncul saat desain sudah dijawab dan tercatat di atas.
 
 ## 3. Skema database
 
@@ -101,7 +100,7 @@ Tanpa tabel ini, rekap bulanan tidak punya batas atas/bawah dan data tahun berbe
 | `class_id` | uuid | FK → `classes`, cascade |
 | `subject_id` | uuid | FK → `subjects`, cascade |
 | `teacher_id` | uuid | FK → `users`, cascade |
-| `day_of_week` | tinyint | 1=Senin … 6=Sabtu — lihat [O2](#keputusan-yang-masih-terbuka) |
+| `day_of_week` | tinyint | 1=Senin … 5=Jumat ([D14](#keputusan-desain)) |
 | `start_time` | time | |
 | `end_time` | time | |
 | `deleted_at` | timestamp | nullable |
@@ -118,7 +117,7 @@ Satu baris = satu kombinasi kelas + mapel + guru + hari + jam.
 | `class_id` | uuid | FK → `classes`, cascade |
 | `nisn` | string | **unique** |
 | `name` | string | |
-| `gender` | enum | nullable — lihat [O1](#keputusan-yang-masih-terbuka) |
+| `gender` | enum | **NOT NULL**, nilai `L` atau `P` ([D13](#keputusan-desain)) |
 | `deleted_at` | timestamp | nullable |
 
 Siswa dipindah kelas dengan **update** `class_id`, bukan baris baru. Absensi historisnya tetap benar karena `attendances` menunjuk `schedules`, bukan `classes`.
@@ -302,8 +301,8 @@ Shared hosting cPanel ([D12](#keputusan-desain)). Penyesuaian wajib:
 
 Dua hal harus dicek di cPanel **sebelum** satu baris kode ditulis, karena keduanya bisa membatalkan seluruh rencana:
 
-1. **Versi PHP** ([R2](#12-risiko)) — di bawah 8.2 tidak ada Laravel yang bisa jalan
-2. **`upload_max_filesize` / `post_max_size`** ([R5](#12-risiko)) — harus cukup untuk file Excel siswa
+1. **Versi PHP** ([R1](#12-risiko)) — di bawah 8.2 tidak ada Laravel yang bisa jalan
+2. **`upload_max_filesize` / `post_max_size`** ([R4](#12-risiko)) — harus cukup untuk file Excel siswa
 
 ### Urutan deploy
 
@@ -362,14 +361,14 @@ Rendering PDF, tampilan visual, E2E. Dicek manual.
 
 | Fase | Isi | Hari |
 |---|---|---|
-| **0. Prasyarat** | Cek versi PHP di cPanel. **Gate — stop bila < 8.2.** Konfirmasi [R1] | 0,5 |
-| **1. Fondasi** | `create-project` + starter kit, `.env` (timezone, sync queue), 7 migration, 7 model + relasi + cast, 4 Policy, `AttendanceRecorder`, 3 Query Object, seeder (1 admin, 5 guru, 1 tahun ajaran, 7 kelas, 8 mapel, ~35 jadwal, 200 siswa) | 4 |
-| **2. Data master** | 7 component CRUD + deteksi bentrok guru + import Excel | 4,5 |
-| **3. Absensi** | Login via NUPTK, registrasi dimatikan, `TodaySchedule`, `AttendanceEntry` | 5 |
-| **4. Rekap & laporan** | 3 halaman rekap, drill-down siswa, `RecapExporter` (Excel + PDF) | 4 |
-| **5. Hardening & deploy** | Seluruh test, backup cron, dry-run deploy di lokal, SOP + dokumentasi PKM | 4,5 |
+| **0. Prasyarat** | Gate di cPanel: versi PHP dan limit upload. **Stop bila PHP < 8.2** | 0,5 |
+| **1. Fondasi** | `create-project` + starter kit, `.env` (timezone, sync queue), 7 migration, 7 model + relasi + cast, 4 Policy, `AttendanceRecorder`, 3 Query Object, seeder (1 admin, 5 guru, 1 tahun ajaran, 7 kelas, 8 mapel, ~35 jadwal, 200 siswa) | 3,5 |
+| **2. Data master** | 7 component CRUD + deteksi bentrok guru + import Excel | 4 |
+| **3. Absensi** | Login via NUPTK, registrasi dimatikan, `TodaySchedule`, `AttendanceEntry` | 4,5 |
+| **4. Rekap & laporan** | 3 halaman rekap, drill-down siswa, `RecapExporter` (Excel + PDF) | 3,5 |
+| **5. Hardening & deploy** | Seluruh test, backup cron, dry-run deploy di lokal, SOP + dokumentasi PKM | 4 |
 
-Total 20-26 hari kerja part-time, ~5-7 minggu kalender.
+Total 20 hari kerja part-time, ~4-5 minggu kalender.
 
 ## 10. Di luar lingkup
 
@@ -404,11 +403,12 @@ Spec ini menggantikan beberapa bagian dari dokumen lama. Saat implementasi, doku
 
 | ID | Risiko | Mitigasi |
 |---|---|---|
-| **R1** | Admin tidak memiliki NUPTK karena ia staf tata usaha, bukan guru | Konfirmasi di Fase 0. Fallback: kolom `login_id` berlabel "NUPTK / NIP" |
-| **R2** | PHP di hosting < 8.2 → tidak ada Laravel yang bisa jalan | Gate di Fase 0, sebelum koding. Fallback: pindah VPS (~Rp 50-150rb/bulan) |
-| **R3** | `storage:link` diblokir shared hosting | Fallback disk ke direktori nyata di bawah `public/` (§7) |
-| **R4** | Batas jumlah file di hosting terlampaui | `composer install --no-dev`; verifikasi sebelum upload pertama |
-| **R5** | Limit upload PHP terlalu kecil untuk import Excel | Verifikasi `upload_max_filesize` / `post_max_size` di gate |
+| **R1** | PHP di hosting < 8.2 → tidak ada Laravel yang bisa jalan | Gate di Fase 0, sebelum koding. Fallback: pindah VPS (~Rp 50-150rb/bulan) |
+| **R2** | `storage:link` diblokir shared hosting | Fallback disk ke direktori nyata di bawah `public/` (§7) |
+| **R3** | Batas jumlah file di hosting terlampaui | `composer install --no-dev`; verifikasi sebelum upload pertama |
+| **R4** | Limit upload PHP terlalu kecil untuk import Excel | Verifikasi `upload_max_filesize` / `post_max_size` di gate |
+
+Dua risiko yang sempat muncul sudah tersingkar lewat keputusan manusia: admin sekolah memang punya NUPTK ([D6](#keputusan-desain)), dan sekolah hanya beroperasi Senin-Jumat ([D14](#keputusan-desain)).
 
 Tidak ada risiko migrasi data: proyek baru, tidak ada data absensi lama yang perlu direkonsiliasi.
 
