@@ -1,4 +1,4 @@
-# Plan 1 — Fondasi (Data Layer)
+﻿# Plan 1 — Fondasi (Data Layer)
 
 > **Untuk agent yang mengerjakan:** WAJIB memakai skill `superpowers:subagent-driven-development` (disarankan) atau `superpowers:executing-plans` untuk mengerjakan plan ini task per task. Format `- [ ]` dipakai untuk melacak progres.
 
@@ -14,14 +14,8 @@
 
 Nilai-nilai ini berasal dari spec dan berlaku untuk **setiap task**. Jangan menyimpang tanpa keputusan manusia.
 
-- **Gate versi Laravel (D15).** Tentukan sekali di Task 1, lalu pakai apa adanya di task berikutnya:
-
-  | PHP lokal | Constraint Composer | Alasan |
-  |---|---|---|
-  | `>= 8.3` | `^13.0` | Laravel 13 (rilis 2026-03-17), bug-fix sampai Q3 2027, security sampai 2028-03-17 |
-  | `8.2` | `^12.0` | Laravel 12 sudah selesai masa bug-fix (2026-08-13), hanya security-fix sampai 2027-02-24 |
-
-  Kalau cPanel ternyata hanya 8.2, naikkan ke 8.3 lewat MultiPHP Manager. Jangan mengunci major yang mati dalam 5 bulan.
+- **Gate versi: tidak ada fallback (D15 + D16).** Wajib **PHP ≥ 8.3** dan **Laravel 13** dari `laravel/livewire-starter-kit` cabang `main`. Kalau PHP lokal di bawah 8.3, task ini berhenti di Step 1 — jangan lanjut dengan versi lebih lama.
+- **Fortify dibuang (D17).** Starter kit membawanya; auth dibangun manual di Plan 2 karena identitas login adalah `nuptk`, bukan email.
 
 - **`APP_TIMEZONE=Asia/Jakarta` wajib di `.env`.** Default Laravel UTC; tanpa ini `date('Y-m-d')` bergeser sehari pada absensi jam 7 pagi.
 - **`QUEUE_CONNECTION=sync`.** Tidak ada `queue:work` di shared hosting.
@@ -80,7 +74,7 @@ app/
     ScheduleConflictDetector.php # deteksi guru 2 kelas jam sama
 database/
   migrations/
-    0001_01_01_000000_create_users_table.php   # MODIFIKASI: sessions saja
+    0001_01_01_000000_create_users_table.php   # MODIFIKASI Task 1: sessions saja
     2026_01_01_000001_create_academic_years_table.php
     2026_01_01_000002_create_users_table.php
     2026_01_01_000003_create_subjects_table.php
@@ -114,6 +108,26 @@ tests/Feature/
     RecapExporterTest.php
 ```
 
+**Berkas starter kit yang dipakai, bukan dibuat plan ini:** `resources/views/layouts/app.blade.php` (dipakai sebagai `<x-layouts.app>`), `resources/views/layouts/app/sidebar.blade.php`, `resources/views/layouts/app/header.blade.php`, `resources/views/layouts/auth.blade.php` + `layouts/auth/card.blade.php` (dipakai halaman login Plan 2), `resources/views/components/app-logo.blade.php`, `resources/views/components/app-logo-icon.blade.php`, `resources/views/components/auth-header.blade.php`, `resources/views/components/auth-session-status.blade.php`, `resources/views/components/desktop-user-menu.blade.php`, komponen ikon Flux (`resources/views/flux/`), dan `resources/views/partials/head.blade.php`. Plan 2-5 memakainya, tidak pernah menggantinya.
+
+Judul halaman lewat **prop**, bukan slot: `<x-layouts.app title="Tahun Ajaran">`. Bukan `<x-slot name="title">`.
+
+**Berkas starter kit yang DIHAPUS di Task 1** — daftar ini persis sama dengan yang dieksekusi di Step 6, diverifikasi terhadap tree `dev-main` (`laravel/livewire-starter-kit@0f62a26`):
+
+| Kelompok | Berkas |
+|---|---|
+| Fortify | `app/Providers/FortifyServiceProvider.php`, `app/Actions/Fortify/CreateNewUser.php`, `app/Actions/Fortify/ResetUserPassword.php`, `config/fortify.php` |
+| Validasi profil | `app/Concerns/PasswordValidationRules.php`, `app/Concerns/ProfileValidationRules.php` |
+| Halaman auth & settings | `resources/views/pages/` (seluruhnya), `routes/settings.php`, `resources/views/partials/settings-heading.blade.php` |
+| Layout auth yang tidak dipakai | `resources/views/layouts/auth/simple.blade.php`, `resources/views/layouts/auth/split.blade.php` |
+| Passkey & 2FA | `database/migrations/2024_01_01_000000_create_passkeys_table.php`, `database/migrations/2025_08_14_170933_add_two_factor_columns_to_users_table.php`, `resources/views/components/passkey-registration.blade.php`, `resources/views/components/passkey-verify.blade.php`, `resources/js/passkeys.js` |
+| Logout bawaan | `app/Livewire/Actions/Logout.php` (sidebar menulis form logout sendiri) |
+| Scaffolding Chisel | `app/Console/Commands/InstallFeaturesCommand.php`, `chisel.php`, `chisel-paths.php`, `rename_livewire_files.php` |
+| Halaman contoh | `resources/views/dashboard.blade.php`, `resources/views/welcome.blade.php`, `resources/views/components/placeholder-pattern.blade.php` |
+| Tooling tanpa paket | `phpstan.neon` (PHPStan tidak ada di `require-dev`; config-nya hanya membuat `vendor/bin/phpstan` gagal dengan pesan yang menyesatkan) |
+
+Tidak ada folder `lang/` di starter kit, jadi tidak ada yang perlu dihapus dari sana. Plan 2 yang membuat `lang/id/auth.php`.
+
 **Catatan nama:** tabel `classes` dipetakan ke model `SchoolClass`, bukan `Class`, karena `class` keyword PHP. Tabelnya tetap `classes`.
 
 ---
@@ -121,28 +135,42 @@ tests/Feature/
 ## Task 1: Bootstrap project Laravel
 
 **Files:**
-- Create: hasil `composer create-project` (major dari gate versi)
+- Create: hasil `composer create-project laravel/livewire-starter-kit:dev-main` (D10)
+- Modify: `composer.json` (hapus `laravel/fortify` + `laravel/chisel` dari `require`), `bootstrap/providers.php` — buang `FortifyServiceProvider` (D17)
+- Delete: tabel "Berkas starter kit yang DIHAPUS" di atas (`app/Providers/FortifyServiceProvider.php`, `app/Actions/Fortify/`, `app/Concerns/`, `config/fortify.php`, `app/Livewire/Actions/Logout.php`, `resources/views/pages/`, `resources/views/partials/settings-heading.blade.php`, `resources/views/layouts/auth/simple.blade.php`, `resources/views/layouts/auth/split.blade.php`, dua migration passkey/2FA, dua komponen passkey, `resources/js/passkeys.js`, `app/Console/Commands/InstallFeaturesCommand.php`, `chisel.php`, `chisel-paths.php`, `rename_livewire_files.php`, `resources/views/dashboard.blade.php`, `resources/views/welcome.blade.php`, `resources/views/components/placeholder-pattern.blade.php`, `routes/settings.php`, `phpstan.neon`)
+- Modify: `database/migrations/0001_01_01_000000_create_users_table.php` — sessions saja
 - Modify: `.env`, `.gitignore`, `phpunit.xml`
-- Modify: `database/migrations/0001_01_01_000000_create_users_table.php`
-- Delete: `tests/Feature/ExampleTest.php`
+- Delete: `tests/Feature/Auth/`, `tests/Feature/DashboardTest.php`, `tests/Unit/ExampleTest.php`
 
-**Produces:** project Laravel yang jalan, `.env` terkonfigurasi Indonesia, test terisolasi ke SQLite, dan **tidak ada** tabel `users` bawaan yang akan bentrok dengan Task 2.
+**Consumes:** keputusan D10, D15, D16, D17, D18 dari spec §2
+**Produces:** project Laravel 13 + Livewire 4 + Flux yang jalan, tanpa Fortify, tanpa tabel `users` yang akan bentrok dengan Task 2, dan test terisolasi ke SQLite.
 
-- [ ] **Step 1: Gate versi — cek PHP lalu tentukan major**
+Task ini hanya menyiapkan panggung. Tidak ada model, tidak ada enum, tidak ada policy. Semua itu Task 2-4.
+
+- [ ] **Step 1: Gate versi PHP - cek dulu, stop bila gagal**
 
 ```powershell
 php -v
+php -r "echo PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION . PHP_EOL;"
 php -m | Select-String -Pattern "pdo_mysql|mbstring|openssl|tokenizer|xml|curl|zip|gd|fileinfo|intl"
 ```
 
-`ext-intl` boleh hilang — `RecapPeriod` jatuh ke nama bulan Bahasa Inggris dan itu sama dalam Bahasa Indonesia untuk semua bulan yang dipakai. Sisanya wajib ada. Kalau `pdo_mysql` hilang, berhenti — tidak ada database.
+**Tiga kondisi yang membuat plan ini berhenti di sini:**
 
-Tulis hasil ke variabel dan pakai di Step 2:
+1. `PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION` harus lebih besar atau sama dengan **8.3**. Hentikan di sini kalau 8.2 atau lebih rendah, jangan lanjut. Ini bukan saran — D16 menetapkan ini sebagai batas keras.
+2. `pdo_mysql` harus ada. Tanpa itu tidak ada database, dan tidak ada pekerjaan yang bisa dilanjutkan.
+3. `zip` harus ada. `RecapExporter` (Task 8) memakai `ZipArchive` untuk memeriksa file XLSX. Kalau `zip` belum aktif, aktifkan lewat `php.ini` — di Laragon: menu PHP → toggle ekstensi → restart Apache. **Jangan lanjut dengan `zip` mati**, karena Task 8 akan gagal jauh setelah semua basis data selesai.
+
+Kalau `php` tidak dikenali sebagai perintah, PHP belum ada di `PATH`. Untuk Laragon, tambahkan path ini di awal sesi PowerShell:
 
 ```powershell
-$laravel = if ((php -r "echo PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION;") -ge '8.3') { '^13.0' } else { '^12.0' }
-"Constraint Composer: $laravel"
+$env:Path = "C:\laragon\bin\php\php-8.3.33-Win32-vs16-x64;$env:Path"
+php -v
 ```
+
+Path di atas adalah versi yang dipakai saat plan ini ditulis (8.3.33). Kalau installasi kamu berbeda, sesuaikan angkanya — yang penting `php -v` melaporkan 8.3 atau lebih tinggi.
+
+Ekstensi selain `pdo_mysql` dan `zip` boleh-boleh: `intl` hilang hanya berarti nama bulan rekap tampil dalam bahasa Inggris, dan itu nama yang sama dalam bahasa Indonesia untuk semua bulan yang dipakai.
 
 - [ ] **Step 2: Buat project di direktori sementara**
 
@@ -151,14 +179,31 @@ Direktori kerja sudah berisi `docs/`, `CLAUDE.MD`, dan `.git/`, jadi `create-pro
 ```powershell
 $tmp = "C:\Users\USER\AppData\Local\Temp\opencode\absensi-app"
 if (Test-Path $tmp) { Remove-Item $tmp -Recurse -Force }
-composer create-project laravel/laravel $tmp $laravel --no-interaction
+composer create-project laravel/livewire-starter-kit:dev-main $tmp --no-interaction --no-scripts
 ```
 
-Expected: `Project skeleton created successfully`. Butuh 2-5 menit.
+Expected: `Project skeleton created successfully`. Butuh 3-8 menit karena mengunduh banyak asset.
+
+**`dev-main` itu wajib, bukan pilihan.** Packagist untuk `laravel/livewire-starter-kit` hanya punya dua tag: `v1.0.0` dan `v1.0.1`. Kedua tag itu masih mengunci Laravel 12 dan PHP 8.2, dengan `v1.0.1` pada `"php": "^8.2"` dan `"laravel/framework": "^12.0"`. Perintah tanpa `:dev-main` akan memasang **Laravel 12**, dan gejalanya baru terlihat di Step 9. Branch `main` yang mengunci `"php": "^8.3"` dan `"laravel/framework": "^13.17"`.
+
+Tabel pembeda yang harus dipakai kalau Step 9 nanti menampilkan versi framework yang salah:
+
+| Versi di Packagist | PHP | Laravel | Livewire | PHPUnit | Status |
+|---|---|---|---|---|---|
+| `v1.0.1` (tag terbaru) | `^8.2` | `^12.0` | Flux + Volt | `^11.5` | **Dilarang** — ini yang didapat kalau `:dev-main` dihapus |
+| `dev-main` (default branch) | `^8.3` | `^13.17` | Livewire 4 + Flux + Blaze | `^12.5` | **Yang dipakai plan ini** |
+
+**Kenapa `livewire-starter-kit` dan bukan `laravel/laravel`:** D10 mewajibkan starter kit resmi. Skeleton polos `laravel/laravel` tidak punya Livewire, tidak punya layout, tidak punya komponen Flux — semua yang dipakai Plan 2-5. Memakai skeleton polos berarti menulis ulang apa yang sudah ada di starter kit.
+
+**Kenapa `--no-scripts`:** `composer.json` starter kit punya `post-create-project-cmd` yang menjalankan `artisan install:features` (pilih fitur interaktif milik Chisel), `key:generate`, membuat `database/database.sqlite`, lalu `migrate --graceful` ke SQLite. Semuanya tidak berguna di sini: database kita MySQL, `APP_KEY` harus dibuat di direktori kerja pada Step 9, dan perintah `install:features` interaktif akan menggantung di tengah terminal. `--no-scripts` membuat `create-project` deterministik.
+
+Kalau `composer` gagal dengan error versi PHP, itu bukti bahwa Step 1 tidak dijalankan atau PHP-nya salah. Jangan pintas.
 
 - [ ] **Step 3: Pindahkan isi project ke direktori kerja**
 
-`vendor/` dan `node_modules/` sengaja tidak ikut — diinstall ulang di direktori kerja pada Step 6.
+`vendor/` dan `node_modules/` sengaja tidak ikut — diinstall ulang di direktori kerja pada Step 9 supaya `composer install` jalan di tempat yang benar.
+
+`database/database.sqlite` juga tidak ikut. Karena Step 2 memakai `--no-scripts`, file itu tidak pernah dibuat di `$tmp`, jadi tidak ada yang perlu dikecualikan.
 
 ```powershell
 $dest = "C:\Absensi SMP Madinatul Ilmi"
@@ -166,77 +211,115 @@ Get-ChildItem $tmp -Force | Where-Object { $_.Name -notin @('.git', '.gitignore'
     Copy-Item -Destination $dest -Recurse -Force
 ```
 
-- [ ] **Step 4: Konfigurasi `.env`**
+- [ ] **Step 4: Buang Fortify**
+
+D17: Fortify mengasumsikan `email` sebagai identitas login. Sistem ini login lewat `nuptk` (D6). Adaptasi Fortify berarti melawan framework demi dua field. Fortify dihapus total; auth dibangun di Plan 2.
 
 ```powershell
-Copy-Item "$dest\.env.example" "$dest\.env" -Force
-```
-
-Lalu edit `$dest\.env`:
-
-```dotenv
-APP_NAME="Sistem Absensi Sekolah"
-APP_ENV=local
-APP_DEBUG=true
-APP_URL=http://localhost
-APP_TIMEZONE=Asia/Jakarta
-
-DB_CONNECTION=mysql
-DB_HOST=127.0.0.1
-DB_PORT=3306
-DB_DATABASE=absensi
-DB_USERNAME=root
-DB_PASSWORD=
-
-QUEUE_CONNECTION=sync
-SESSION_DRIVER=database
-CACHE_STORE=database
-```
-
-`SESSION_DRIVER` dan `CACHE_STORE` disetel `database` supaya tidak butuh Redis/memcached di hosting. `QUEUE_CONNECTION=sync` karena tidak ada `queue:work` di shared hosting.
-
-- [ ] **Step 5: `.gitignore` — tambahkan satu entri saja**
-
-File `.gitignore` bawaan Laravel sudah meng-cover `vendor`, `node_modules`, `public/build`, `/storage/framework/*`, dan `.env`. Yang belum ada dan memang dipakai proyek ini:
-
-```gitignore
-/public/uploads
-```
-
-Fallback disk ke direktori nyata di bawah `public/` (spec §7) butuh folder ini ada. Jangan timpa file yang sudah ada — append satu baris.
-
-- [ ] **Step 6: Install dependency dan build asset**
-
-```powershell
-composer install
-npm install
-npm run build
-php artisan key:generate
-php artisan about
-```
-
-Expected: `php artisan about` menampilkan major Laravel yang sama dengan `$laravel`.
-
-- [ ] **Step 7: Isolasi test ke SQLite in-memory**
-
-`phpunit.xml` bawaan Laravel punya dua baris yang dikomentari. Buka file itu lalu **hapus tanda `<!--` dan `-->`** di:
-
-```xml
-<env name="DB_CONNECTION" value="sqlite"/>
-<env name="DB_DATABASE" value=":memory:"/>
-```
-
-Hapus juga file contoh yang tidak dipakai:
-
-```powershell
+Remove-Item "$dest\app\Providers\FortifyServiceProvider.php" -Force
+Remove-Item "$dest\app\Actions\Fortify" -Recurse -Force
+Remove-Item "$dest\app\Concerns" -Recurse -Force
+Remove-Item "$dest\config\fortify.php" -Force
+Remove-Item "$dest\app\Livewire\Actions" -Recurse -Force
+Remove-Item "$dest\resources\views\pages" -Recurse -Force
+Remove-Item "$dest\routes\settings.php" -Force
+Remove-Item "$dest\resources\views\welcome.blade.php" -Force
+Remove-Item "$dest\resources\js\passkeys.js" -Force
+Remove-Item "$dest\resources\views\components\passkey-registration.blade.php" -Force
+Remove-Item "$dest\resources\views\components\passkey-verify.blade.php" -Force
+Remove-Item "$dest\resources\views\partials\settings-heading.blade.php" -Force
+Remove-Item "$dest\database\migrations\2024_01_01_000000_create_passkeys_table.php" -Force
+Remove-Item "$dest\database\migrations\2025_08_14_170933_add_two_factor_columns_to_users_table.php" -Force
+Remove-Item "$dest\tests\Feature\Auth" -Recurse -Force
+Remove-Item "$dest\tests\Feature\Settings" -Recurse -Force
+Remove-Item "$dest\tests\Feature\DashboardTest.php" -Force
 Remove-Item "$dest\tests\Feature\ExampleTest.php" -Force
+Remove-Item "$dest\tests\Unit\ExampleTest.php" -Force
+Remove-Item "$dest\app\Console\Commands\InstallFeaturesCommand.php" -Force
+Remove-Item "$dest\chisel.php" -Force
+Remove-Item "$dest\chisel-paths.php" -Force
+Remove-Item "$dest\rename_livewire_files.php" -Force
+Remove-Item "$dest\resources\views\dashboard.blade.php" -Force
+Remove-Item "$dest\resources\views\components\placeholder-pattern.blade.php" -Force
+Remove-Item "$dest\resources\views\layouts\auth\simple.blade.php" -Force
+Remove-Item "$dest\resources\views\layouts\auth\split.blade.php" -Force
+Remove-Item "$dest\phpstan.neon" -Force
 ```
 
-Karena `<env>` di `phpunit.xml` di-set sebelum aplikasi boot dan Dotenv bersifat immutable, test **selalu** memakai SQLite in-memory. `.env` lokal tidak pernah berubah — tidak ada langkah "balik ke MySQL" di plan ini.
+Tambahkan `-ErrorAction SilentlyContinue` kalau PowerShell complain soal berkas yang memang tidak ada di `dev-main` — `Remove-Item` pada path yang hilang berhenti dengan error dan menggagalkan sisa baris. Setelah blok ini, jalankan verifikasi di bawah agar tidak ada scaffolding yang tertinggal diam-diam.
 
-- [ ] **Step 8: Hilangkan tabel `users` bawaan (anti-bentrok)**
+**Kenapa tiap kelompok dihapus:**
 
-Migration bawaan `0001_01_01_000000_create_users_table.php` membuat **tiga** tabel sekaligus: `users`, `password_reset_tokens`, dan `sessions`. Kita butuh `sessions` (karena `SESSION_DRIVER=database`), tapi `users` harus dibuat sendiri di Task 2 dan `password_reset_tokens` tidak dipakai sama sekali karena reset password lewat admin.
+| Yang dihapus | Alasan |
+|---|---|
+| `app/Providers/FortifyServiceProvider.php`, `app/Actions/Fortify/`, `config/fortify.php` | Auth pakai `nuptk`, bukan email (D17) |
+| `app/Concerns/` | Hanya berisi `PasswordValidationRules` dan `ProfileValidationRules` yang dipakai halaman Fortify |
+| `app/Livewire/Actions/Logout.php` | Form logout di sidebar; Plan 2 buat ulang milik sendiri |
+| `resources/views/pages/` | 12 halaman auth + settings milik Fortify, termasuk `auth/login.blade.php` dan `auth/register.blade.php` |
+| `routes/settings.php` | Register route profile/appearance/security yang tidak ada lagi |
+| `resources/views/welcome.blade.php` | 64 KB ilustrasi marketing yang tidak dipakai aplikasi internal |
+| `resources/js/passkeys.js` + 2 komponen passkey + `partials/settings-heading.blade.php` | Hanya dipakai halaman 2FA/passkey Fortify |
+| 2 migration: `create_passkeys_table`, `add_two_factor_columns_to_users_table` | Milik Fortify. Tidak ada fitur v1 yang memakainya |
+| `tests/Feature/Auth/` (6 file) | Semua test itu test Fortify: `AuthenticationTest`, `EmailVerificationTest`, `PasswordConfirmationTest`, `PasswordResetTest`, `RegistrationTest`, `TwoFactorChallengeTest` |
+| `tests/Feature/Settings/` (2 file) | `ProfileUpdateTest` dan `SecurityTest` menguji halaman settings yang dihapus |
+| `tests/Feature/DashboardTest.php`, `ExampleTest.php`, `tests/Unit/ExampleTest.php` | Test placeholder starter kit. Dashboard dibangun ulang di Plan 2 |
+| `app/Console/Commands/InstallFeaturesCommand.php`, `chisel.php`, `chisel-paths.php`, `rename_livewire_files.php` | Scaffolding sekali pakai. Meninggalkan `InstallFeaturesCommand` tanpa paket `chisel` akan membuat `artisan` gagal boot saat memuat daftar command |
+| `resources/views/dashboard.blade.php` | Halaman dashboard versi Blade milik starter kit. Plan 2 menggantinya dengan komponen Livewire `Dashboard`, jadi blade ini tidak akan pernah dirender |
+| `resources/views/components/placeholder-pattern.blade.php` | Dipakai hanya oleh `welcome.blade.php` yang sudah dihapus |
+| `resources/views/layouts/auth/simple.blade.php`, `split.blade.php` | Varian layout login yang tidak dipakai. `layouts/auth/card.blade.php` tetap dipakai lewat `auth-header` |
+| `phpstan.neon` | PHPStan tidak ada di `require-dev` starter kit. Config yatim ini hanya membuat `vendor/bin/phpstan` gagal dengan pesan yang menyesatkan |
+
+**Yang TIDAK boleh dihapus** (dipakai Plan 2-5): `resources/views/layouts/app.blade.php`, `layouts/app/sidebar.blade.php`, `layouts/app/header.blade.php`, `layouts/auth.blade.php`, `layouts/auth/card.blade.php`, `resources/views/components/auth-header.blade.php`, `auth-session-status.blade.php`, `desktop-user-menu.blade.php`, `app-logo.blade.php`, `app-logo-icon.blade.php`, `resources/views/flux/`, `resources/views/partials/head.blade.php`, `database/factories/UserFactory.php`, `tests/TestCase.php`, `pint.json`.
+
+`desktop-user-menu.blade.php` memanggil `auth()->user()->initials()` dan `route('profile.edit')`. Method `initials()` sudah ada di model `User` (Task 3); route `profile.edit` diganti Plan 2.
+
+Verifikasi bahwa tidak ada scaffolding yang tertinggal:
+
+```powershell
+Get-ChildItem $dest -Recurse -Include "chisel*.php","rename_livewire_files.php","phpstan.neon","*passkey*","*two_factor*","fortify.php","FortifyServiceProvider.php" -File |
+    Select-Object -ExpandProperty FullName
+```
+
+Expected: **tidak ada output.** Kalau ada yang muncul, hapus manual dan ulangi — sisa scaffolding tidak merusak apa pun sekarang, tapi akan menggigit saat `composer install` berikutnya membangun ulang cache class atau saat ada yang menjalankan `php artisan list`.
+
+Ganti **seluruh isi** `bootstrap/providers.php`:
+
+```php
+<?php
+
+use App\Providers\AppServiceProvider;
+
+return [
+    AppServiceProvider::class,
+];
+```
+
+Sekalian buang dua dependency dari blok `require` di `composer.json`. **Edit `composer.json` secara manual, jangan pakai `composer remove`.**
+
+```json
+"require": {
+    "php": "^8.3",
+    "laravel/framework": "^13.17",
+    "laravel/tinker": "^3.0",
+    "livewire/blaze": "^1.0",
+    "livewire/flux": "^2.13.1",
+    "livewire/livewire": "^4.1"
+},
+```
+
+Dua baris yang dihapus: `"laravel/chisel": "^0.1.0",` dan `"laravel/fortify": "^1.37.2",`. Urutan baris lain dibiarkan seperti bawaan starter kit.
+
+**Kenapa bukan `composer remove`:** `composer.json` starter kit punya script `post-update-cmd` yang memanggil `php artisan install:features`. Perintah `install:features` itu milik `app/Console/Commands/InstallFeaturesCommand.php` yang **baru saja** kita hapus pada blok di atas. `composer remove` memicu `post-update-cmd`, Artisan gagal menemukan perintahnya, dan Composer berhenti dengan error sebelum dependency sempat hilang. Mengedit `composer.json` langsung membuat Step 9 (`composer install`) yang membaca daftar itu, tanpa perlu memicu script apa pun.
+
+`laravel/chisel` dihapus karena itu alat scaffolding milik starter kit (`php artisan install:features`). Kita sudah lewat tahap itu — semua fitur dikunci di spec, dan tidak ada yang perlu dipilih interaktif. `vendor/` belum ada di `$dest` pada tahap ini, jadi `composer remove` juga akan memaksa install penuh hanya untuk membuang dua paket.
+
+- [ ] **Step 5: Hilangkan tabel `users` bawaan (anti-bentrok)**
+
+Migration bawaan starter kit `0001_01_01_000000_create_users_table.php` membuat **tiga** tabel sekaligus: `users`, `password_reset_tokens`, dan `sessions`.
+
+- `users` harus dibuat sendiri di Task 3 dengan kolom `nuptk` dan UUID. Kalau dibiarkan, Task 3 bentrok.
+- `sessions` **dibutuhkan**, karena `SESSION_DRIVER=database`.
+- `password_reset_tokens` **tidak dipakai** — reset password lewat admin (D8).
 
 Ganti **seluruh isi** file itu dengan:
 
@@ -268,24 +351,115 @@ return new class extends Migration
 };
 ```
 
-Kalau file bawaan ternyata tidak memuat `sessions`, salin blok `Schema::create('sessions', ...)` dari situ apa adanya. Kalau ternyata memuat `cache` juga, pindahkan blok `cache` ke file `0001_01_01_000001_create_cache_table.php` yang sudah ada.
+**`foreignId` wajib diganti `foreignUuid`.** Kolom `user_id` bawaan starter kit memakai `$table->foreignId('user_id')` yang menghasilkan `BIGINT UNSIGNED`. sementara `users.id` di Task 3 adalah `uuid`. Kalau `foreignId` dibiarkan, setiap query session gagal dengan *"Cannot mix incompatible types"* — dan gejalanya muncul saat login, bukan saat migrate, jadi sulit ditelusuri.
 
-Verifikasi tidak ada yang bentrok:
+`cache` dan `jobs` tetap dibiarkan dari bawaan karena `CACHE_STORE=database` dan `QUEUE_CONNECTION=sync`. Tabel `jobs` tidak pernah dipakai, tapi membiarkannya tidak merusak apa pun, sedangkan menghapus migration bawaan berisiko merusak urutan migration.
+
+- [ ] **Step 6: Konfigurasi `.env`**
+
+```powershell
+Copy-Item "$dest\.env.example" "$dest\.env" -Force
+```
+
+Lalu edit `$dest\.env`:
+
+```dotenv
+APP_NAME="Sistem Absensi Sekolah"
+APP_ENV=local
+APP_DEBUG=true
+APP_URL=http://localhost:8000
+APP_TIMEZONE=Asia/Jakarta
+
+APP_LOCALE=id
+APP_FALLBACK_LOCALE=id
+APP_FAKER_LOCALE=id_ID
+
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=absensi
+DB_USERNAME=root
+DB_PASSWORD=
+
+QUEUE_CONNECTION=sync
+SESSION_DRIVER=database
+CACHE_STORE=database
+FILESYSTEM_DISK=local
+```
+
+Tiga baris locale **wajib** ada. Tanpa `APP_LOCALE=id`, setiap tanggal, nama bulan, dan pesan validasi akan tampil dalam bahasa Inggris — termasuk pesan error yang dibaca guru.
+
+`QUEUE_CONNECTION=sync` karena tidak ada `queue:work` di shared hosting (spec §7). `SESSION_DRIVER` dan `CACHE_STORE` disetel `database` supaya tidak butuh Redis/memcached.
+
+`DB_CONNECTION=sqlite` dan baris `DB_DATABASE=absensi` yang di-comment di `.env.example` starter kit harus diganti seperti di atas. Kalau dibiarkan, test akan diam-diam memakai file SQLite di disk — persis kesalahan yang Step 7 mencegah.
+
+- [ ] **Step 7: Isolasi test ke SQLite in-memory**
+
+`phpunit.xml` starter kit sudah punya `DB_CONNECTION` dan `DB_DATABASE`. Buka file itu dan pastikan dua baris ini aktif (hapus `<!--` dan `-->` kalau masih dikomentari):
+
+```xml
+<env name="DB_CONNECTION" value="sqlite"/>
+<env name="DB_DATABASE" value=":memory:"/>
+```
+
+Sama juga, tambahkan locale dan timezone supaya test konsisten dengan produksi:
+
+```xml
+<env name="APP_TIMEZONE" value="Asia/Jakarta"/>
+<env name="APP_LOCALE" value="id"/>
+```
+
+Karena `<env>` di `phpunit.xml` di-set sebelum aplikasi boot dan Dotenv bersifat immutable, test **selalu** memakai SQLite in-memory. `.env` lokal tidak pernah berubah — tidak ada langkah "balik ke MySQL" di plan ini.
+
+- [ ] **Step 8: `.gitignore` - tambahkan satu entri saja**
+
+File `.gitignore` bawaan sudah meng-cover `vendor`, `node_modules`, `public/build`, `/storage/framework/*`, dan `.env`. Yang belum ada dan memang dipakai proyek ini:
+
+```gitignore
+/public/uploads
+```
+
+Fallback disk ke direktori nyata di bawah `public/` (spec §7) butuh folder ini ada. Jangan timpa file yang sudah ada — append satu baris di akhir.
+
+- [ ] **Step 9: Install dependency dan build asset**
+
+```powershell
+composer install
+npm install
+npm run build
+php artisan key:generate
+php artisan about
+```
+
+Expected: `php artisan about` menampilkan **Laravel 13.x**. Kalau muncul 12.x, Step 2 mengambil tag yang salah — ulangi Step 2.
+
+Kalau `npm run build` gagal dengan error `vite-plus` atau `vp`, paket `optionalDependencies` untuk platform Windows mungkin belum terpasang. Coba `npm install --include=optional`. Kalau tetap gagal, catat di Task 10 dan lanjut — asset bisa dibangun ulang nanti, dan test tidak bergantung pada CSS.
+
+- [ ] **Step 10: Verifikasi tidak ada bentrok dan tidak ada sisa Fortify**
 
 ```powershell
 php artisan migrate:fresh
+php artisan route:list
 ```
 
-Expected: hanya `sessions` (+ `cache` dan `jobs` dari bawaan) yang dibuat. Kalau `users` ikut muncul, migration belum terganti.
+Expected `migrate:fresh`: hanya `sessions` (+ `cache` dan `jobs` dari bawaan) yang dibuat. **Kalau `users` ikut muncul, migration belum terganti** — itu akan bentrok dengan Task 2.
 
-- [ ] **Step 9: Commit**
+Expected `route:list`: hanya route `home` dan `dashboard` dari starter kit, tanpa `login`, `register`, `forgot-password`, atau `logout`. Route auth kita bangun sendiri di Plan 2.
+
+Cek juga bahwa tidak ada sisa Fortify:
+
+```powershell
+Select-String -Path "$dest\app\**\*.php","$dest\config\*.php","$dest\bootstrap\*.php" -Pattern "Fortify|fortify"
+```
+
+Expected: tidak ada output. Kalau masih ada, `bootstrap/providers.php` atau `composer.json` belum bersih.
+
+- [ ] **Step 11: Commit**
 
 ```powershell
 git add -A
-git commit -m "chore: bootstrap Laravel, env Indonesia, test SQLite, hapus tabel users bawaan"
+git commit -m "chore: bootstrap Laravel 13 + Livewire 4 starter kit, buang Fortify, test SQLite"
 ```
-
----
 
 ## Task 2: Enums dan skema 7 tabel
 
@@ -1001,6 +1175,28 @@ class User extends Authenticatable
     public function isAdmin(): bool
     {
         return $this->role === UserRole::Admin;
+    }
+
+    /**
+     * Dipakai layout starter kit: resources/views/components/desktop-user-menu.blade.php
+     * memanggil auth()->user()->initials(). Tanpa method ini, setiap halaman yang
+     * memakai sidebar akan 500.
+     */
+    public function initials(): string
+    {
+        $parts = preg_split('/\s+/', trim($this->name), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+
+        $initials = '';
+
+        foreach ($parts as $part) {
+            $initials .= mb_strtoupper(mb_substr($part, 0, 1));
+
+            if (mb_strlen($initials) >= 2) {
+                break;
+            }
+        }
+
+        return $initials === '' ? '?' : $initials;
     }
 
     public function homeroomClasses(): HasMany
@@ -2509,7 +2705,7 @@ Tiga hal yang disengaja di sini:
 php artisan test --filter=AttendanceRecorderTest
 ```
 
-Expected: 10 tests pass.
+Expected: 11 tests pass.
 
 Kalau `test_kegagalan_satu_siswa_membatalkan_seluruh_batch` gagal dengan jumlah baris 1 atau 2, berarti `DB::transaction` tidak membungkus seluruh loop.
 
@@ -3975,10 +4171,17 @@ class DemoSchoolSeederTest extends TestCase
     {
         $this->seed(DemoSchoolSeeder::class);
 
-        $salah = DB::table('attendances')
+        $salah = 0;
+
+        DB::table('attendances')
             ->join('schedules', 'schedules.id', '=', 'attendances.schedule_id')
-            ->whereRaw('weekday(attendances.date, 1) <> schedules.day_of_week')
-            ->count();
+            ->select('attendances.date', 'schedules.day_of_week')
+            ->each(function (object $row): void {
+                // Carbon::dayOfWeek memberi 0=Minggu .. 6=Sabtu, sama seperti day_of_week_iso
+                if ((int) Carbon::parse($row->date)->dayOfWeek !== (int) $row->day_of_week) {
+                    $salah++;
+                }
+            });
 
         $this->assertSame(0, $salah, 'Absensi hanya boleh ada di hari jadwalnya');
     }
@@ -4007,7 +4210,9 @@ class DemoSchoolSeederTest extends TestCase
 }
 ```
 
-`weekday(tanggal, 1)` mengembalikan 1 untuk Senin sampai 5 untuk Jumat, persis sama dengan `schedules.day_of_week`. Karena itu `use Illuminate\Support\Facades\DB;` sudah ada di blok import atas file test.
+Pembagian hari dihitung di PHP, bukan lewat fungsi SQL. `weekday()` hanya ada di MySQL, dan di SQLite fungsi itu memakai penomoran Sunday-first (Minggu = 1), bukan ISO Monday-first seperti `schedules.day_of_week`. Kalau dipakai apa adanya, test ini bisa lolos karena alasan yang keliru. `Carbon::parse($row->date)->dayOfWeek` memberi angka 0 (Minggu) sampai 6 (Sabtu) di kedua database, jadi aman.
+
+Karena itu blok import atas file test memuat `use Carbon\Carbon;` dan `use Illuminate\Support\Facades\DB;`.
 
 - [ ] **Step 2: Jalankan test, pastikan gagal**
 
@@ -4325,10 +4530,10 @@ Sengaja ditunda ke plan berikutnya, bukan karena tidak penting:
 
 | Item | Masuk |
 |---|---|
-| Livewire starter kit, login via NUPTK, registrasi dimatikan | Plan 3 |
-| 7 CRUD data master, import Excel | Plan 2 |
-| `TodaySchedule`, `AttendanceEntry` | Plan 3 |
-| Halaman rekap + tab "Kelas saya" | Plan 4 |
+| Login via NUPTK, `EnsureUserIsActive`, dashboard, manajemen user | Plan 2 |
+| 7 CRUD data master, import Excel | Plan 3 |
+| `TodaySchedule`, `AttendanceEntry` | Plan 4 |
+| Halaman rekap + tab "Kelas saya" | Plan 5 |
 | Backup cron, SOP sekolah, deploy cPanel | Plan 5 |
 
 

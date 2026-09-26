@@ -2,7 +2,7 @@
 
 Context project untuk AI coding agent. Baca file ini, lalu `docs/specs/2026-09-26-sistem-absensi-sekolah-design.md`, lalu `docs/PRD-Sistem-Absensi-Sekolah.md` sebelum mengerjakan task apapun.
 
-Rencana implementasi yang sudah dipecah per fase ada di `docs/specs/plans/`. Eksekusi plan itu dengan skill `superpowers:executing-plans` atau `superpowers:subagent-driven-development` — jangan mulaingoding dari spec langsung.
+Rencana implementasi yang sudah dipecah per fase ada di `docs/specs/plans/`. Eksekusi plan itu dengan skill `superpowers:executing-plans` atau `superpowers:subagent-driven-development` — jangan mulai mengoding dari spec langsung.
 
 ## Tentang project
 Sistem absensi sekolah berbasis web untuk kegiatan PKM (Pengabdian kepada Masyarakat), dipakai oleh satu sekolah mitra. Detail lengkap requirement, scope, dan user flow ada di `docs/PRD-Sistem-Absensi-Sekolah.md` — jangan asumsikan fitur di luar yang tertulis di situ tanpa konfirmasi.
@@ -13,12 +13,13 @@ Skema database, role & scoping, dan batasan platform ditentukan di `docs/specs/2
 Belum ada kode. Repo baru diinisialisasi 2026-09-26 dan saat itu hanya berisi `docs/`. Skema akan dibuat dari nol di Fase 1 — `database/migrations/` **belum ada**.
 
 ## Tech stack
-- Laravel (versi terbaru stable, PHP >= 8.2) + Livewire untuk seluruh UI — tidak pakai REST API terpisah/SPA
-- Starter kit: **Livewire starter kit resmi Laravel** (bukan Jetstream, bukan Breeze)
+- Laravel 13 + Livewire 4 untuk seluruh UI — tidak pakai REST API terpisah/SPA
+- Starter kit: **Livewire starter kit resmi Laravel** branch `dev-main` (bukan Jetstream, bukan Breeze). Tag `v1.0.0`/`v1.0.1` masih Laravel 12 dan tidak boleh dipakai
+- PHP >= 8.3 (`laravel/livewire-starter-kit:dev-main` mensyaratkan `^8.3`)
 - Database: MySQL, primary key UUID di semua tabel
 - Laravel Excel untuk export Excel; **library terpisah** untuk export PDF (Laravel Excel tidak bisa PDF)
 - Tailwind CSS untuk styling
-- Testing: Pest (ikut bawaan starter kit)
+- Testing: **PHPUnit 12** (ikut bawaan starter kit), **bukan Pest**. Filter test pakai `php artisan test --filter=NamaTest`
 
 ## Autentikasi
 - Login memakai **NUPTK** (`users.nuptk`, unique, NOT NULL) — bukan email

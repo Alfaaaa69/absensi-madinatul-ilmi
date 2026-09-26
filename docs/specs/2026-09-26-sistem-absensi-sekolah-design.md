@@ -29,12 +29,15 @@ Setiap keputusan di bawah diambil eksplisit bersama manusia, bukan asumsi.
 | D7 | Halaman **registrasi dimatikan**; hanya admin yang membuat akun | Sistem tertutup. Mencegah siapa pun mendaftar jadi guru |
 | D8 | "Lupa password" dimatikan — reset dilakukan admin dari menu user | 20 user internal, lebih andal daripada email yang sering gagal terkirim |
 | D9 | Scoping di **Query Object per use-case**, bukan di dalam Livewire component | Logika scoping dipakai 4 tempat. Ditulis terpisah = pasti akan tidak sinkron, dan PDF bisa berbeda dari layar |
-| D10 | Livewire starter kit resmi Laravel | Ringan, sudah berisi auth + layout. Jetstream membawa bloat (API token, teams, 2FA) yang tidak dipakai |
+| D10 | Livewire starter kit resmi Laravel, cabang `main` | Sudah berisi layout + Flux UI. Jetstream membawa bloat (API token, teams, 2FA) yang tidak dipakai. Tag `v1.0.1` ditolak karena `minimum-stability: dev` — lihat D16 |
 | D11 | 4 fitur tambahan masuk v1: tandai-semua-hadir, import Excel siswa, batas window edit, riwayat per siswa | Tanpa import Excel, 200+ siswa diinput manual. Tanpa batas edit, data bisa berubah-ubah |
 | D12 | Deploy ke **shared hosting cPanel** | Keputusan manusia. Mengini batasan di beberapa tempat — lihat [§7](#7-batasan-platform) |
 | D13 | `students.gender` dipakai, `NOT NULL`, nilai `L` atau `P` | Laporan sekolah hampir selalu memisahkan L/P. Import Excel memvalidasi kolom ini wajib terisi |
 | D14 | `day_of_week` 1-5 (Senin-Jumat) | Sekolah hanya beroperasi Senin-Jumat |
-| D15 | Versi Laravel ditentukan **dari versi PHP yang tersedia**, bukan "terbaru" | Laravel 13 (rilis 2026-03-17) butuh PHP ≥ 8.3. Laravel 12 (PHP 8.2-8.5) sudah **selesai masa bug-fix** 2026-08-13 dan hanya dapat security-fix sampai 2027-02-24. Proyek ini baru, jadi targetkan major terbaru yang bisa jalan di cPanel. Lihat [§7](#gate-sebelum-koding) |
+| D15 | Versi Laravel **hanya** `^13.0`, PHP **hanya** ≥ 8.3. Tidak ada fallback | Awalnya D15 menawarkan fallback `PHP 8.2 → Laravel ^12`. Fallback itu **dibatalkan** oleh D16 setelah `composer.json` starter kit resmi diverifikasi. Lihat [§7](#gate-sebelum-koding) |
+| D16 | **Fallback ke Laravel 12 dihapus.** PHP < 8.3 = STOP, bukan degrade | `laravel/livewire-starter-kit` `main` mensyaratkan `"php": "^8.3"` + `"laravel/framework": "^13.17"`. Tags lama (`v1.0.1`, Feb 2025) jalan di PHP 8.2 tapi memakai `"minimum-stability": "dev"` — menarik dependensi belum stabil untuk sistem yang harus jalan 4 tahun. Kalau cPanel hanya 8.2, **naikkan PHP-nya**, jangan turunkan stack-nya |
+| D17 | **Fortify dibuang**, auth dibangun manual | Fortify mengasumsikan `email` sebagai identitas. Sistem ini login via `nuptk` ([D6](#keputusan-desain)). Menyesuaikan Fortify = melawan framework demi 2 field (NUPTK + password). Manual lebih murah dan tidak membawa 2FA/passkey/profile yang tidak dipakai |
+| D18 | Gaya komponen: **class component Livewire** (`app/Livewire/*.php`) + view Blade terpisah | Starter kit `main` (Livewire 4 + Flux) memakai class component, bukan Volt. Blade di `resources/views/livewire/*.blade.php` |
 
 Tidak ada keputusan yang masih terbuka. Semua pertanyaan yang muncul saat desain sudah dijawab dan tercatat di atas.
 
@@ -302,19 +305,23 @@ Shared hosting cPanel ([D12](#keputusan-desain)). Penyesuaian wajib:
 
 Dua hal harus dicek di cPanel **sebelum** satu baris kode ditulis, karena keduanya bisa membatalkan seluruh rencana:
 
-1. **Versi PHP** ([R1](#12-risiko)) — menentukan versi Laravel yang boleh dipakai (D15). Di bawah 8.2 tidak ada Laravel yang bisa jalan:
+1. **Versi PHP** ([R1](#12-risiko)) — menentukan versi Laravel, Livewire starter kit, dan segalanya ([D15](#keputusan-desain)). **Tidak ada fallback lagi:**
 
-   | PHP di cPanel | Major Laravel | Alasan |
-   |---|---|---|
-   | ≥ 8.3 | `^13.0` | Masih dapat bug-fix sampai Q3 2027, security sampai 2028-03-17. Pilihan utama. |
-   | 8.2 | `^12.0` | Hanya security-fix, berakhir 2027-02-24. Dipakai hanya karena tidak ada pilihan lain. |
+   | PHP | Major Laravel | Starter kit | Alasan |
+   |---|---|---|---|
+   | **≥ 8.3** | `^13.0` | `laravel/livewire-starter-kit` `main` | Bug-fix sampai Q3 2027, security sampai 2028-03-17. Satu-satunya kombinasi yang dipakai proyek ini. |
+   | < 8.3 | — | — | **STOP.** Bukan degraded, tapi berhenti. |
 
-   Kalau cPanel ternyata hanya menyediakan PHP 8.2, naikkan ke 8.3 lewat **MultiPHP Manager** — jangan mengunci diri ke major yang akan mati dalam 5 bulan.
+   **Kenapa fallback ke Laravel 12 dihapus (D16).** Dulu ada gate `PHP 8.2 → Laravel ^12`. Gate itu dibatalkan setelah diverifikasi ke `composer.json` starter kit resmi: cabang `main` mensyaratkan `"php": "^8.3"` dan `"laravel/framework": "^13.17"`. Tags lama (`v1.0.1`, Feb 2025) memang jalan di PHP 8.2, tapi memakai `"minimum-stability": "dev"` — artinya menarik dependensi yang belum stabil, untuk sistem yang harus jalan 4 tahun. Starter kit `main` memakai `"minimum-stability": "stable"`.
+
+   Jadi kalau cPanel hanya menyediakan PHP 8.2, jawabannya **bukan** turun ke Laravel 12, tapi **naikkan PHP ke 8.3 lewat MultiPHP Manager** terlebih dahulu. Menjalankan stack yang tidak didukung cPanel akan menghasilkan bug yang muncul paling buruk saat deploy, bukan saat development.
+
+   PHP lokal yang dipakai untuk development: **8.3.33** (Laragon), di `C:\laragon\bin\php\php-8.3.33-Win32-vs16-x64`. Harus ada di `PATH`; `ext-zip` wajib aktif untuk `RecapExporter`.
 2. **`upload_max_filesize` / `post_max_size`** ([R4](#12-risiko)) — harus cukup untuk file Excel siswa
 
 ### Urutan deploy
 
-1. Cek versi PHP → **gate, stop bila < 8.2**
+1. Cek versi PHP → **gate, stop bila < 8.3** (bukan 8.2 — lihat D16)
 2. `composer install --no-dev --optimize-autoloader`
 3. `php artisan migrate --force`
 4. `php artisan config:cache && route:cache && view:cache`
@@ -331,7 +338,9 @@ Cron harian `mysqldump` ke direktori **di luar `public_html`**. Data absensi ada
 
 ## 8. Strategi testing
 
-Pest (ikut bawaan Livewire starter kit). Diurutkan dari nilai tertinggi. Manual testing tetap dipakai untuk rendering PDF dan visual — keduanya sulit diuji otomatis dan tidak sepenting.
+**PHPUnit 12** (ikut bawaan Livewire starter kit branch `dev-main`). Bukan Pest — starter kit `dev-main` tidak menyertakan Pest sama sekali; tag `v1.0.0`/`v1.0.1` memang memakai Pest, tapi keduanya dilarang (D10). Filter test pakai `php artisan test --filter=NamaTest`. Diurutkan dari nilai tertinggi. Manual testing tetap dipakai untuk rendering PDF dan visual — keduanya sulit diuji otomatis dan tidak sepenting.
+
+Test memakai SQLite in-memory, bukan MySQL. Konsekuensinya: test yang bergantung pada fitur khusus MySQL harus ditulis di luar PHPUnit atau diuji manual.
 
 **Pola yang berlaku di semua fase:** policy diuji dulu, baru component. Tidak ada component yang ditulis sebelum scoping-nya terverifikasi lewat test.
 
@@ -367,16 +376,20 @@ Rendering PDF, tampilan visual, E2E. Dicek manual.
 
 ## 9. Fase implementasi
 
-| Fase | Isi | Hari |
-|---|---|---|
-| **0. Prasyarat** | Gate di cPanel: versi PHP dan limit upload. **Stop bila PHP < 8.2** | 0,5 |
-| **1. Fondasi** | `create-project` + starter kit, `.env` (timezone, sync queue), 7 migration, 7 model + relasi + cast, 4 Policy, `AttendanceRecorder`, 3 Query Object, seeder (1 admin, 5 guru, 1 tahun ajaran, 7 kelas, 8 mapel, ~35 jadwal, 200 siswa) | 3,5 |
-| **2. Data master** | 7 component CRUD + deteksi bentrok guru + import Excel | 4 |
-| **3. Absensi** | Login via NUPTK, registrasi dimatikan, `TodaySchedule`, `AttendanceEntry` | 4,5 |
-| **4. Rekap & laporan** | 3 halaman rekap, drill-down siswa, `RecapExporter` (Excel + PDF) | 3,5 |
-| **5. Hardening & deploy** | Seluruh test, backup cron, dry-run deploy di lokal, SOP + dokumentasi PKM | 4 |
+| Fase | Plan | Isi | Hari |
+|---|---|---|---|
+| **0. Prasyarat** | — | Gate di cPanel: versi PHP (wajib ≥ 8.3) dan limit upload. **Stop bila PHP < 8.3** | 0,5 |
+| **1. Fondasi** | `plans/2026-09-26-plan-1-fondasi.md` | `create-project` + starter kit, `.env` (timezone, sync queue), 7 migration, 7 model + relasi + cast, 7 factory, 4 Policy, `AttendanceRecorder`, 3 Query Object, `RecapExporter`, seeder demo | 3,5 |
+| **2. Akun** | `plans/2026-09-26-plan-2-akun.md` | Login via NUPTK, registrasi dimatikan, `UserManagement` (CRUD, reset password, aktif/nonaktif, assign wali kelas) | 2 |
+| **3. Data master** | `plans/2026-09-26-plan-3-data-master.md` | `AcademicYearManagement`, `ClassManagement`, `SubjectManagement`, `ScheduleManagement` (+ deteksi bentrok), `StudentManagement`, `StudentImport` | 4 |
+| **4. Absensi** | `plans/2026-09-26-plan-4-absensi.md` | `TodaySchedule`, `AttendanceEntry` | 3 |
+| **5. Rekap & deploy** | `plans/2026-09-26-plan-5-rekap-dan-deploy.md` | `HomeroomClassRecap`, `TeacherSubjectRecap`, `AdminAttendanceReport`, drill-down siswa, export Excel/PDF, hardening, SOP deploy | 5 |
 
-Total 20 hari kerja part-time, ~4-5 minggu kalender.
+Total 18 hari kerja part-time, ~4 minggu kalender.
+
+**Urutan plan ≠ urutan tabel di atas secara bebas.** Akun harus selesai sebelum data master: semua halaman CRUD berada di balik autentikasi. Plan 1 tidak menulis satu pun komponen Livewire.
+
+Seeder demo di Plan 1 sengaja besar (1 admin, 10 guru, 7 kelas, 210 siswa, 8 mapel, 105 jadwal) supaya rekap di Plan 5 punya isi realistis. Jumlah itu boleh dikecilkan di `.env` lokal, tapi test Plan 1 mengunci angkanya.
 
 ## 10. Di luar lingkup
 
