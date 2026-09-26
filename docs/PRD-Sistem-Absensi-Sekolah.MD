@@ -83,7 +83,7 @@ Relasi kunci:
 - Auth: login memakai NUPTK, bukan email. Registrasi dimatikan, reset password lewat admin
 - Deploy: shared hosting cPanel (PHP >= 8.2)
 
-Skema database, role & scoping, dan batasan platform yang berlaku sudah dikunci di `docs/superpowers/specs/2026-09-26-sistem-absensi-sekolah-design.md`. Kalau dokumen ini berbeda dengan spec, **spec yang menang**.
+Skema database, role & scoping, dan batasan platform yang berlaku sudah dikunci di `docs/specs/2026-09-26-sistem-absensi-sekolah-design.md`. Kalau dokumen ini berbeda dengan spec, **spec yang menang**.
 
 ## 9. Rekomendasi pengembangan lanjutan
 - Portal login orang tua untuk memantau kehadiran anak

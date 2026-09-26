@@ -1,11 +1,11 @@
 # CLAUDE.md — Sistem Absensi Sekolah (PKM)
 
-Context project untuk AI coding agent. Baca file ini, lalu `docs/superpowers/specs/2026-09-26-sistem-absensi-sekolah-design.md`, lalu `docs/PRD-Sistem-Absensi-Sekolah.md` sebelum mengerjakan task apapun.
+Context project untuk AI coding agent. Baca file ini, lalu `docs/specs/2026-09-26-sistem-absensi-sekolah-design.md`, lalu `docs/PRD-Sistem-Absensi-Sekolah.md` sebelum mengerjakan task apapun.
 
 ## Tentang project
 Sistem absensi sekolah berbasis web untuk kegiatan PKM (Pengabdian kepada Masyarakat), dipakai oleh satu sekolah mitra. Detail lengkap requirement, scope, dan user flow ada di `docs/PRD-Sistem-Absensi-Sekolah.md` — jangan asumsikan fitur di luar yang tertulis di situ tanpa konfirmasi.
 
-Skema database, role & scoping, dan batasan platform ditentukan di `docs/superpowers/specs/2026-09-26-sistem-absensi-sekolah-design.md`. **Spec itu yang menang** kalau ada conflicts dengan PRD atau ERD.
+Skema database, role & scoping, dan batasan platform ditentukan di `docs/specs/2026-09-26-sistem-absensi-sekolah-design.md`. **Spec itu yang menang** kalau ada conflicts dengan PRD atau ERD.
 
 ## Status project
 Belum ada kode. Repo baru diinisialisasi 2026-09-26 dan saat itu hanya berisi `docs/`. Skema akan dibuat dari nol di Fase 1 — `database/migrations/` **belum ada**.

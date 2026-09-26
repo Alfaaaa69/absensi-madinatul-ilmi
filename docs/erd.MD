@@ -2,7 +2,7 @@
 
 Skema database untuk sistem absensi sekolah (PKM). Rujuk juga ke `PRD-Sistem-Absensi-Sekolah.md` untuk konteks fitur.
 
-> **Skema ini sudah di-update mengikuti `docs/superpowers/specs/2026-09-26-sistem-absensi-sekolah-design.md`.** Diagram di bawah adalah ringkasan visual — bentuk kolom persisnya ada di spec §3 dan itulah yang dipakai saat menulis migration.
+> **Skema ini sudah di-update mengikuti `docs/specs/2026-09-26-sistem-absensi-sekolah-design.md`.** Diagram di bawah adalah ringkasan visual — bentuk kolom persisnya ada di spec §3 dan itulah yang dipakai saat menulis migration.
 
 ```mermaid
 erDiagram
