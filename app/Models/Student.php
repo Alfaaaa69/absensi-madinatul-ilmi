@@ -17,6 +17,7 @@ use Illuminate\Support\Carbon;
  * @property string $class_id
  * @property string $nisn
  * @property string $name
+ * @property SchoolClass $schoolClass relasi selalu ada: class_id NOT NULL
  * @property StudentGender $gender
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
