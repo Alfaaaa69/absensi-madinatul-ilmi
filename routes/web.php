@@ -23,4 +23,6 @@ Route::middleware(['auth', EnsureUserIsActive::class])->group(function () {
     Route::get('/dashboard', Dashboard::class)->name('dashboard');
 
     Route::get('/user', UserManagement::class)->name('user.index');
+
+    require __DIR__.'/master.php';
 });

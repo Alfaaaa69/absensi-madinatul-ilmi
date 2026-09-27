@@ -15,6 +15,8 @@
                     <x-nav.dashboard-link />
 
                     <x-nav.user-link />
+
+                    <x-nav.data-master />
                 </flux:sidebar.group>
             </flux:sidebar.nav>
 

@@ -28,6 +28,23 @@ Nilai-nilai ini berasal dari spec §3, §4, §7 dan Plan 1, lalu berlaku untuk *
 - **Layout: `#[Layout('layouts.app')]`** — `resources/views/layouts/app.blade.php` itu **view**, bukan Blade component, jadi tag `<x-layouts.app>` tidak akan resolve (dibuktikan di Plan 2 Task 5; ada test yang gagal karena itu). Plan ini tidak membuat layout sendiri, tidak menulis `@extends`, dan tidak mengarang `@section('title')` atau `<x-slot name="title">`. Judul halaman lewat `->title('Tahun Ajaran')` dari method `mount()`/`render()`, memakai `#[Layout('layouts.app')]` di class component.
 - **`maatwebsite/excel` dan `config/excel.php` sudah terpasang** di Plan 1 Task 8. Plan ini tidak menambah dependency dan tidak mem-publish ulang config. Disk temp untuk unggahan memakai disk bawaan Laravel; tidak ada file konfigurasi disk baru di plan ini.
 - **Batas ukuran impor 5 MB.** Sudah diverifikasi di gate cPanel (spec R4, `upload_max_filesize` / `post_max_size`). Kalau file lebih besar, upload ditolak dengan pesan, bukan timeout.
+- **Test 403 harus pakai HTTP request asli, bukan `Livewire::test()`.** `Livewire\Features\SupportTesting\InitialRender` memanggil `temporarilyDisableExceptionHandlingAndMiddleware()` (`InitialRender.php:32`), jadi `AuthorizationException` dari `mount()`/`render()` **tidak pernah sampai ke PHPUnit** — test selalu hijau padahal halamannya 403. Pola yang benar, sudah dipakai Plan 2:
+
+  ```php
+  $this->actingAs($guru)->get('/master/tahun-ajaran')->assertForbidden();
+  ```
+
+  Pola `$this->expectException(AuthorizationException::class); Livewire::actingAs($guru)->test(X::class);` ada di Task 1-6 versi lama plan ini dan **salah semua**. Test perilaku component (`->call('save')`) tetap pakai `Livewire::test()`.
+
+- **Assertion tanggal jangan lewat `assertDatabaseHas`.** Kolomnya `$table->date()`, tapi cast `date` di model menulis `Y-m-d H:i:s`. MySQL memotongnya jadi `2025-07-01`; SQLite menyimpan `2025-07-01 00:00:00`. Assertion mentah yang benar di produksi jadi salah di test. Ambil lewat model lalu bandingkan `->toDateString()`:
+
+  ```php
+  $tahun = AcademicYear::sole();
+  $this->assertSame('2025-07-01', $tahun->start_date->toDateString());
+  ```
+
+- **`routes/master.php` dan link nav ditambahkan bertahap per task,** satu route per component yang benar-benar sudah ada. Mendaftarkan keenam route di Task 1 berarti lima halaman 500 sampai Task 5-6 selesai. Keadaan akhir tetap enam route.
+
 - **Semua snippet adalah kode final.** Tidak ada kode yang disengaja belum lengkap. Kalau test gagal, perbaiki penyebabnya — jangan menyalin versi yang salah lalu menggantinya.
 
 ---
