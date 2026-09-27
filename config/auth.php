@@ -46,6 +46,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Auth Username
+    |--------------------------------------------------------------------------
+    |
+    | Kolom yang dipakai sebagai identitas saat login. Aplikasi ini memakai
+    | NUPTK, bukan email: email bersifat nullable dan tidak boleh dipakai
+    | sebagai kunci login.
+    |
+    */
+
+    'username' => 'nuptk',
+
+    /*
+    |--------------------------------------------------------------------------
     | User Providers
     |--------------------------------------------------------------------------
     |
@@ -95,8 +108,8 @@ return [
     'passwords' => [
         'users' => [
             'provider' => 'users',
-            'table' => env('AUTH_PASSWORD_RESET_TOKEN_TABLE', 'password_reset_tokens'),
-            'expire' => 60,
+            'table' => null,
+            'expire' => null,
             'throttle' => 60,
         ],
     ],
