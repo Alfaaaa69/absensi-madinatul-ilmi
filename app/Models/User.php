@@ -9,7 +9,26 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Support\Carbon;
 
+/**
+ * Blok @property di bawah bukan dokumentasi — larastan membacanya untuk memberi
+ * tipe pada atribut Eloquent. Tanpa `role` di sini, casts() (`@return array<string,
+ * string>`) menghapus informasi enum dan perbandingan `=== UserRole::Admin`
+ * dianggap selalu false oleh phpstan.
+ *
+ * @property string $id
+ * @property string $name
+ * @property string $nuptk
+ * @property string|null $email
+ * @property string $password
+ * @property UserRole $role
+ * @property bool $is_active
+ * @property string|null $remember_token
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property Carbon|null $deleted_at
+ */
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
