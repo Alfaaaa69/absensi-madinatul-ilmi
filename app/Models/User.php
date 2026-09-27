@@ -79,11 +79,17 @@ class User extends Authenticatable
         return $initials === '' ? '?' : $initials;
     }
 
+    /**
+     * @return HasMany<SchoolClass, $this>
+     */
     public function homeroomClasses(): HasMany
     {
         return $this->hasMany(SchoolClass::class, 'homeroom_teacher_id');
     }
 
+    /**
+     * @return HasMany<Schedule, $this>
+     */
     public function taughtSchedules(): HasMany
     {
         return $this->hasMany(Schedule::class, 'teacher_id');
