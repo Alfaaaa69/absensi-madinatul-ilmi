@@ -2110,13 +2110,14 @@ namespace Tests\Feature\Livewire;
 
 use App\Enums\DayOfWeek;
 use App\Livewire\ScheduleManagement;
+use App\Models\Attendance;
 use App\Models\Schedule;
 use App\Models\SchoolClass;
+use App\Models\Student;
 use App\Models\Subject;
 use App\Models\User;
 use App\Services\ScheduleManager;
 use App\Support\ScheduleConflictDetector;
-use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
@@ -2144,14 +2145,14 @@ class ScheduleManagementTest extends TestCase
             ->call('save')
             ->assertHasNoErrors();
 
-        $this->assertDatabaseHas('schedules', [
-            'class_id' => $kelas->id,
-            'subject_id' => $mapel->id,
-            'teacher_id' => $guru->id,
-            'day_of_week' => 1,
-            'start_time' => '07:00:00',
-            'end_time' => '08:30:00',
-        ]);
+        $jadwal = Schedule::sole();
+
+        $this->assertSame($kelas->id, $jadwal->class_id);
+        $this->assertSame($mapel->id, $jadwal->subject_id);
+        $this->assertSame($guru->id, $jadwal->teacher_id);
+        $this->assertSame(DayOfWeek::Senin, $jadwal->day_of_week);
+        $this->assertSame('07:00', $jadwal->start_time->format('H:i'));
+        $this->assertSame('08:30', $jadwal->end_time->format('H:i'));
     }
 
     public function test_jadwal_bentrok_ditolak(): void
@@ -2300,12 +2301,36 @@ class ScheduleManagementTest extends TestCase
         $this->assertSame([], $bentrok);
     }
 
+    public function test_arsipkan_jadwal_tidak_menghapus_absensi_lama(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $jadwal = Schedule::factory()->create();
+        $siswa = Student::factory()->create(['class_id' => $jadwal->class_id]);
+        $absensi = Attendance::factory()->create([
+            'schedule_id' => $jadwal->id,
+            'student_id' => $siswa->id,
+        ]);
+
+        Livewire::actingAs($admin)->test(ScheduleManagement::class)->call('arsipkan', $jadwal->id);
+
+        $this->assertDatabaseHas('attendances', ['id' => $absensi->id]);
+    }
+
     public function test_guru_tidak_bisa_membuka_halaman_jadwal(): void
     {
-        $this->expectException(AuthorizationException::class);
+        $guru = User::factory()->guru()->create(['is_active' => true]);
 
-        Livewire::actingAs(User::factory()->guru()->create())
-            ->test(ScheduleManagement::class);
+        $this->actingAs($guru)->get('/master/jadwal')->assertForbidden();
+    }
+
+    public function test_admin_bisa_membuka_halaman_jadwal(): void
+    {
+        $admin = User::factory()->admin()->create(['is_active' => true]);
+
+        $this->actingAs($admin)
+            ->get('/master/jadwal')
+            ->assertOk()
+            ->assertSee('Jadwal Pelajaran');
     }
 }
 ```
@@ -2337,6 +2362,9 @@ final class ScheduleManager
 {
     public function __construct(private readonly ScheduleConflictDetector $detector) {}
 
+    /**
+     * @param  array{class_id: string, subject_id: string, teacher_id: string, day_of_week: string, start_time: string, end_time: string}  $data
+     */
     public function save(?Schedule $schedule, array $data): Schedule
     {
         $guru = User::findOrFail($data['teacher_id']);
@@ -2412,6 +2440,7 @@ final class ScheduleManager
 namespace App\Livewire;
 
 use App\Enums\DayOfWeek;
+use App\Enums\UserRole;
 use App\Models\AcademicYear;
 use App\Models\Schedule;
 use App\Models\SchoolClass;
@@ -2419,10 +2448,13 @@ use App\Models\Subject;
 use App\Models\User;
 use App\Services\ScheduleManager;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
+use Livewire\Attributes\Layout;
 use Livewire\Component;
 
+#[Layout('layouts.app')]
 class ScheduleManagement extends Component
 {
     public ?string $editingId = null;
@@ -2452,8 +2484,8 @@ class ScheduleManagement extends Component
             'teacher_id' => [
                 'required',
                 Rule::exists('users', 'id')
-                    ->where(fn ($query) => $query
-                        ->where('role', 'guru')
+                    ->where(fn (Builder $query) => $query
+                        ->where('role', UserRole::Guru)
                         ->whereNull('deleted_at')),
             ],
             'day_of_week' => [
@@ -2467,6 +2499,8 @@ class ScheduleManagement extends Component
 
     public function mount(): void
     {
+        Gate::authorize('create', Schedule::class);
+
         if ($this->academic_year_id === '') {
             $this->academic_year_id = (string) (AcademicYear::query()
                 ->where('is_active', true)
@@ -2569,7 +2603,7 @@ class ScheduleManagement extends Component
             'daftarKelas' => $kelasTerpilih,
             'daftarMapel' => Subject::query()->orderBy('name')->get(),
             'daftarGuru' => User::query()
-                ->where('role', 'guru')
+                ->where('role', UserRole::Guru)
                 ->where('is_active', true)
                 ->orderBy('name')
                 ->get(),
@@ -2584,158 +2618,159 @@ class ScheduleManagement extends Component
                 ->orderBy('day_of_week')
                 ->orderBy('start_time')
                 ->get(),
-        ]);
+        ])->title('Jadwal Pelajaran');
     }
 }
 ```
 
 Daftar jadwal di-scope ke `academic_year_id` dengan `whereHas('schoolClass', ...)`, bukan dengan kondisi role. Kelas berbeda tahun ajaran adalah baris berbeda (D2), jadi mencampurkannya di satu tabel akan membuat guru mengira dia mengajar dua kelas yang sebenarnya kelas yang sama di dua tahun.
 
+`mount()` memakai `Gate::authorize('create', Schedule::class)`, **bukan** `viewAny`. `SchedulePolicy::viewAny` sengaja mengizinkan guru - guru butuh akses baca jadwalnya sendiri untuk absensi di Plan 4 - sedangkan `/master/jadwal` adalah layar management yang link nav-nya `adminOnly`. Kalau `mount()` memakai `viewAny`, guru bisa membuka halaman management dan test 403 selalu gagal. Aturan yang sama berlaku untuk Task 5 dan Task 6: layar management mengotorisasi ability yang admin-only, bukan `viewAny` sebuah policy yang longgar.
+
+Assertion jam tidak boleh pakai `assertDatabaseHas()` dengan `'07:00:00'`. Cast `start_time`/`end_time` di model `Schedule` adalah `datetime:H:i`, jadi yang tersimpan di database adalah `07:00`, bukan `07:00:00`. Ambil lewat model lalu `->format('H:i')` - aturan yang sama dengan assertion tanggal di Task 1.
+
 `resources/views/livewire/schedule-management.blade.php`:
 
 ```blade
-<x-layouts.app title="Jadwal Pelajaran">
+<div class="space-y-6">
+    <h1 class="text-lg font-semibold text-gray-900">Jadwal Pelajaran</h1>
 
-    <div class="space-y-6">
-        <h1 class="text-lg font-semibold text-gray-900">Jadwal Pelajaran</h1>
+    @if (session('sukses'))
+        <div class="rounded-md bg-green-50 px-4 py-3 text-sm text-green-800">{{ session('sukses') }}</div>
+    @endif
 
-        @if (session('sukses'))
-            <div class="rounded-md bg-green-50 px-4 py-3 text-sm text-green-800">{{ session('sukses') }}</div>
-        @endif
+    @error('start_time')
+        <div class="rounded-md bg-red-50 px-4 py-3 text-sm text-red-800">{{ $message }}</div>
+    @enderror
 
-        @error('start_time')
-            <div class="rounded-md bg-red-50 px-4 py-3 text-sm text-red-800">{{ $message }}</div>
-        @enderror
+    <div class="grid gap-6 lg:grid-cols-3">
+        <form wire:submit="save" class="space-y-3 rounded-lg border border-gray-200 bg-white p-4">
+            <h2 class="font-medium text-gray-900">
+                {{ $editingId === null ? 'Tambah Jadwal' : 'Ubah Jadwal' }}
+            </h2>
 
-        <div class="grid gap-6 lg:grid-cols-3">
-            <form wire:submit="save" class="space-y-3 rounded-lg border border-gray-200 bg-white p-4">
-                <h2 class="font-medium text-gray-900">
-                    {{ $editingId === null ? 'Tambah Jadwal' : 'Ubah Jadwal' }}
-                </h2>
+            <label class="block text-sm">
+                <span class="text-gray-700">Tahun Ajaran</span>
+                <select wire:model.live="academic_year_id" class="mt-1 w-full rounded border-gray-300">
+                    @foreach ($tahunAjaran as $tahun)
+                        <option value="{{ $tahun->id }}">{{ $tahun->name }} ({{ ucfirst($tahun->period->value) }})</option>
+                    @endforeach
+                </select>
+            </label>
+
+            <label class="block text-sm">
+                <span class="text-gray-700">Kelas</span>
+                <select wire:model="class_id" class="mt-1 w-full rounded border-gray-300">
+                    <option value="">Pilih kelas</option>
+                    @foreach ($daftarKelas as $kelas)
+                        <option value="{{ $kelas->id }}">{{ $kelas->name }}</option>
+                    @endforeach
+                </select>
+                @error('class_id') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+            </label>
+
+            <label class="block text-sm">
+                <span class="text-gray-700">Mata Pelajaran</span>
+                <select wire:model="subject_id" class="mt-1 w-full rounded border-gray-300">
+                    <option value="">Pilih mata pelajaran</option>
+                    @foreach ($daftarMapel as $mapel)
+                        <option value="{{ $mapel->id }}">{{ $mapel->name }}</option>
+                    @endforeach
+                </select>
+                @error('subject_id') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+            </label>
+
+            <label class="block text-sm">
+                <span class="text-gray-700">Guru Pengajar</span>
+                <select wire:model="teacher_id" class="mt-1 w-full rounded border-gray-300">
+                    <option value="">Pilih guru</option>
+                    @foreach ($daftarGuru as $guru)
+                        <option value="{{ $guru->id }}">{{ $guru->name }}</option>
+                    @endforeach
+                </select>
+                @error('teacher_id') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+            </label>
+
+            <label class="block text-sm">
+                <span class="text-gray-700">Hari</span>
+                <select wire:model="day_of_week" class="mt-1 w-full rounded border-gray-300">
+                    @foreach ($hari as $item)
+                        <option value="{{ $item->value }}">{{ $item->label() }}</option>
+                    @endforeach
+                </select>
+                @error('day_of_week') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+            </label>
+
+            <div class="grid grid-cols-2 gap-2">
+                <label class="block text-sm">
+                    <span class="text-gray-700">Mulai</span>
+                    <input type="time" wire:model="start_time" class="mt-1 w-full rounded border-gray-300" />
+                    @error('start_time') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                </label>
 
                 <label class="block text-sm">
-                    <span class="text-gray-700">Tahun Ajaran</span>
-                    <select wire:model.live="academic_year_id" class="mt-1 w-full rounded border-gray-300">
-                        @foreach ($tahunAjaran as $tahun)
-                            <option value="{{ $tahun->id }}">{{ $tahun->name }} ({{ ucfirst($tahun->period->value) }})</option>
-                        @endforeach
-                    </select>
+                    <span class="text-gray-700">Selesai</span>
+                    <input type="time" wire:model="end_time" class="mt-1 w-full rounded border-gray-300" />
+                    @error('end_time') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
                 </label>
+            </div>
 
-                <label class="block text-sm">
-                    <span class="text-gray-700">Kelas</span>
-                    <select wire:model="class_id" class="mt-1 w-full rounded border-gray-300">
-                        <option value="">Pilih kelas</option>
-                        @foreach ($daftarKelas as $kelas)
-                            <option value="{{ $kelas->id }}">{{ $kelas->name }}</option>
-                        @endforeach
-                    </select>
-                    @error('class_id') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
-                </label>
+            <div class="flex gap-2">
+                <button type="submit" class="rounded bg-gray-900 px-3 py-2 text-sm text-white">Simpan</button>
+                <button type="button" wire:click="newForm" class="rounded border px-3 py-2 text-sm">Reset</button>
+            </div>
+        </form>
 
-                <label class="block text-sm">
-                    <span class="text-gray-700">Mata Pelajaran</span>
-                    <select wire:model="subject_id" class="mt-1 w-full rounded border-gray-300">
-                        <option value="">Pilih mata pelajaran</option>
-                        @foreach ($daftarMapel as $mapel)
-                            <option value="{{ $mapel->id }}">{{ $mapel->name }}</option>
-                        @endforeach
-                    </select>
-                    @error('subject_id') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
-                </label>
+        <div class="lg:col-span-2 space-y-3">
+            <label class="flex items-center gap-2 text-sm text-gray-700">
+                <input type="checkbox" wire:click="toggleArsip" />
+                Tampilkan yang diarsipkan
+            </label>
 
-                <label class="block text-sm">
-                    <span class="text-gray-700">Guru Pengajar</span>
-                    <select wire:model="teacher_id" class="mt-1 w-full rounded border-gray-300">
-                        <option value="">Pilih guru</option>
-                        @foreach ($daftarGuru as $guru)
-                            <option value="{{ $guru->id }}">{{ $guru->name }}</option>
-                        @endforeach
-                    </select>
-                    @error('teacher_id') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
-                </label>
-
-                <label class="block text-sm">
-                    <span class="text-gray-700">Hari</span>
-                    <select wire:model="day_of_week" class="mt-1 w-full rounded border-gray-300">
-                        @foreach ($hari as $item)
-                            <option value="{{ $item->value }}">{{ $item->label() }}</option>
-                        @endforeach
-                    </select>
-                    @error('day_of_week') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
-                </label>
-
-                <div class="grid grid-cols-2 gap-2">
-                    <label class="block text-sm">
-                        <span class="text-gray-700">Mulai</span>
-                        <input type="time" wire:model="start_time" class="mt-1 w-full rounded border-gray-300" />
-                        @error('start_time') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
-                    </label>
-
-                    <label class="block text-sm">
-                        <span class="text-gray-700">Selesai</span>
-                        <input type="time" wire:model="end_time" class="mt-1 w-full rounded border-gray-300" />
-                        @error('end_time') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
-                    </label>
-                </div>
-
-                <div class="flex gap-2">
-                    <button type="submit" class="rounded bg-gray-900 px-3 py-2 text-sm text-white">Simpan</button>
-                    <button type="button" wire:click="newForm" class="rounded border px-3 py-2 text-sm">Reset</button>
-                </div>
-            </form>
-
-            <div class="lg:col-span-2 space-y-3">
-                <label class="flex items-center gap-2 text-sm text-gray-700">
-                    <input type="checkbox" wire:click="toggleArsip" />
-                    Tampilkan yang diarsipkan
-                </label>
-
-                <div class="overflow-x-auto rounded-lg border border-gray-200 bg-white">
-                    <table class="min-w-full text-sm">
-                        <thead class="bg-gray-50 text-left text-xs uppercase text-gray-500">
-                            <tr>
-                                <th class="px-4 py-2">Hari</th>
-                                <th class="px-4 py-2">Jam</th>
-                                <th class="px-4 py-2">Kelas</th>
-                                <th class="px-4 py-2">Mapel</th>
-                                <th class="px-4 py-2">Guru</th>
-                                <th class="px-4 py-2 text-right">Aksi</th>
+            <div class="overflow-x-auto rounded-lg border border-gray-200 bg-white">
+                <table class="min-w-full text-sm">
+                    <thead class="bg-gray-50 text-left text-xs uppercase text-gray-500">
+                        <tr>
+                            <th class="px-4 py-2">Hari</th>
+                            <th class="px-4 py-2">Jam</th>
+                            <th class="px-4 py-2">Kelas</th>
+                            <th class="px-4 py-2">Mapel</th>
+                            <th class="px-4 py-2">Guru</th>
+                            <th class="px-4 py-2 text-right">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse ($daftar as $jadwal)
+                            <tr class="border-t border-gray-100">
+                                <td class="px-4 py-2">{{ $jadwal->day_of_week->label() }}</td>
+                                <td class="px-4 py-2">
+                                    {{ $jadwal->start_time->format('H:i') }} - {{ $jadwal->end_time->format('H:i') }}
+                                </td>
+                                <td class="px-4 py-2">{{ $jadwal->schoolClass->name }}</td>
+                                <td class="px-4 py-2">{{ $jadwal->subject->name }}</td>
+                                <td class="px-4 py-2">{{ $jadwal->teacher->name }}</td>
+                                <td class="px-4 py-2 text-right">
+                                    <button wire:click="editForm('{{ $jadwal->id }}')" class="text-sm text-blue-700">Ubah</button>
+                                    @if ($jadwal->trashed())
+                                        <button wire:click="pulihkan('{{ $jadwal->id }}')" class="ml-2 text-sm text-green-700">Pulihkan</button>
+                                    @else
+                                        <button wire:click="arsipkan('{{ $jadwal->id }}')" class="ml-2 text-sm text-red-700">Arsipkan</button>
+                                    @endif
+                                </td>
                             </tr>
-                        </thead>
-                        <tbody>
-                            @forelse ($daftar as $jadwal)
-                                <tr class="border-t border-gray-100">
-                                    <td class="px-4 py-2">{{ $jadwal->day_of_week->label() }}</td>
-                                    <td class="px-4 py-2">
-                                        {{ $jadwal->start_time->format('H:i') }} - {{ $jadwal->end_time->format('H:i') }}
-                                    </td>
-                                    <td class="px-4 py-2">{{ $jadwal->schoolClass->name }}</td>
-                                    <td class="px-4 py-2">{{ $jadwal->subject->name }}</td>
-                                    <td class="px-4 py-2">{{ $jadwal->teacher->name }}</td>
-                                    <td class="px-4 py-2 text-right">
-                                        <button wire:click="editForm('{{ $jadwal->id }}')" class="text-sm text-blue-700">Ubah</button>
-                                        @if ($jadwal->trashed())
-                                            <button wire:click="pulihkan('{{ $jadwal->id }}')" class="ml-2 text-sm text-green-700">Pulihkan</button>
-                                        @else
-                                            <button wire:click="arsipkan('{{ $jadwal->id }}')" class="ml-2 text-sm text-red-700">Arsipkan</button>
-                                        @endif
-                                    </td>
-                                </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="6" class="px-4 py-6 text-center text-gray-500">
-                                        Belum ada jadwal pada tahun ajaran ini.
-                                    </td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
+                        @empty
+                            <tr>
+                                <td colspan="6" class="px-4 py-6 text-center text-gray-500">
+                                    Belum ada jadwal pada tahun ajaran ini.
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
-</x-layouts.app>
+</div>
 ```
 
 - [ ] **Step 4: Jalankan test, pastikan lulus**
@@ -2744,7 +2779,7 @@ Daftar jadwal di-scope ke `academic_year_id` dengan `whereHas('schoolClass', ...
 php artisan test --filter=ScheduleManagementTest
 ```
 
-**Expected: 8 tests pass**
+**Expected: 11 tests pass** (8 test di Task 4 + 3 test tambahan: arsip tidak menghapus absensi lama, guru dapat 403, admin dapat 200). Angka 11 sudah diverifikasi dengan `php artisan test --filter=ScheduleManagementTest` di branch `feat/plan-3-data-master`.
 
 Kalau `test_arsipkan_jadwal_membebaskan_slot` gagal dengan `$bentrok` berisi 1 jadwal, `ScheduleConflictDetector` tidak menerapkan global scope soft delete — periksa `use Schedule::query()`, bukan `Schedule::withTrashed()`.
 
