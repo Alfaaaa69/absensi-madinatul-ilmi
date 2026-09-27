@@ -30,3 +30,5 @@ yarn-error.log
 /.env.backup
 /.env.production
 .phpunit.result.cache
+/public/uploads/*
+!/public/uploads/.gitkeep
