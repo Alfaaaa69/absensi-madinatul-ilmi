@@ -25,7 +25,7 @@ Nilai-nilai ini berasal dari spec §3, §4, §7 dan Plan 1, lalu berlaku untuk *
 - **Unique constraint tidak boleh di-bypass.** `classes` unique (`academic_year_id`, `name`); `students.nisn` unique; `users.nuptk` unique. Validasi `Rule::unique` boleh Added di depan, tapi index DB tetap jaring pengaman terakhir dan tidak boleh dilewati dengan `insert`/`upsert`.
 - **Test memakai SQLite in-memory** lewat `phpunit.xml` (Plan 1 Task 1). `.env` tidak pernah disentuh test.
 - **Semua pesan, label, validasi, dan flash message dalam bahasa Indonesia.** Nama method dan property tetap bahasa Inggris agar konsisten dengan Plan 1.
-- **Layout: `<x-layouts.app>`** — wrapper bawaan starter kit di `resources/views/layouts/app.blade.php` (Plan 1 Task 1). Plan ini tidak membuat layout sendiri, tidak menulis `@extends`, dan tidak mengarang tag `<x-slot name="title">`. Judul halaman lewat prop: `<x-layouts.app title="Tahun Ajaran">`.
+- **Layout: `#[Layout('layouts.app')]`** — `resources/views/layouts/app.blade.php` itu **view**, bukan Blade component, jadi tag `<x-layouts.app>` tidak akan resolve (dibuktikan di Plan 2 Task 5; ada test yang gagal karena itu). Plan ini tidak membuat layout sendiri, tidak menulis `@extends`, dan tidak mengarang `@section('title')` atau `<x-slot name="title">`. Judul halaman lewat `->title('Tahun Ajaran')` dari method `mount()`/`render()`, memakai `#[Layout('layouts.app')]` di class component.
 - **`maatwebsite/excel` dan `config/excel.php` sudah terpasang** di Plan 1 Task 8. Plan ini tidak menambah dependency dan tidak mem-publish ulang config. Disk temp untuk unggahan memakai disk bawaan Laravel; tidak ada file konfigurasi disk baru di plan ini.
 - **Batas ukuran impor 5 MB.** Sudah diverifikasi di gate cPanel (spec R4, `upload_max_filesize` / `post_max_size`). Kalau file lebih besar, upload ditolak dengan pesan, bukan timeout.
 - **Semua snippet adalah kode final.** Tidak ada kode yang disengaja belum lengkap. Kalau test gagal, perbaiki penyebabnya — jangan menyalin versi yang salah lalu menggantinya.
@@ -124,6 +124,7 @@ use App\Policies\SchedulePolicy;
 use App\Policies\SchoolClassPolicy;
 use App\Policies\SubjectPolicy;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Gate;
 use Tests\TestCase;
 
 class DataMasterPolicyTest extends TestCase
@@ -214,6 +215,26 @@ class DataMasterPolicyTest extends TestCase
 
         $this->assertTrue($policy->viewAny($guru));
         $this->assertFalse($policy->view($guru, $jadwalOrangLain));
+    }
+
+    public function test_keempat_policy_data_master_terdaftar_di_gate(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $guru = User::factory()->guru()->create();
+
+        // Plan 1 hanya mendaftarkan UserPolicy secara eksplisit di AppServiceProvider.
+        // Empat policy lainandalkan auto-discovery Laravel 11+. Kalau auto-discovery
+        // itu mati, test yang memanggil app(Policy::class) tetap hijau padahal keenam
+        // komponen akan 403 - jadi resolusi Gate wajib diuji lewat Gate, bukan policy.
+        $this->assertTrue(Gate::forUser($admin)->allows('viewAny', AcademicYear::class));
+        $this->assertTrue(Gate::forUser($admin)->allows('create', Subject::class));
+        $this->assertTrue(Gate::forUser($admin)->allows('create', SchoolClass::class));
+        $this->assertTrue(Gate::forUser($admin)->allows('create', Schedule::class));
+
+        $this->assertFalse(Gate::forUser($guru)->allows('viewAny', AcademicYear::class));
+        $this->assertFalse(Gate::forUser($guru)->allows('create', Subject::class));
+        $this->assertFalse(Gate::forUser($guru)->allows('create', SchoolClass::class));
+        $this->assertFalse(Gate::forUser($guru)->allows('create', Schedule::class));
     }
 }
 ```
@@ -401,7 +422,7 @@ class SchedulePolicy
 php artisan test --filter=PolicyTest
 ```
 
-Expected: 24 tests pass (19 test Plan 1 + 5 test baru).
+Expected: 26 tests pass (20 test Plan 1 + 6 test baru). Angka 20 sudah diverifikasi dengan `php artisan test --filter=PolicyTest` di branch `feat/plan-3-data-master` sebelum Task 0 dikerjakan.
 
 Kalau test Plan 1 gagal setelah policy dimodifikasi, berarti `viewRecap` atau `recordAttendance` berubah. Keduanya harus persis seperti di Plan 1 — plan ini hanya menambah ability.
 
