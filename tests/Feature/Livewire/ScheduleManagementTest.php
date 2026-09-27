@@ -110,6 +110,50 @@ class ScheduleManagementTest extends TestCase
         }
     }
 
+    public function test_pesan_bentrok_menyebut_semua_kelas_saat_guru_punya_beberapa_jadwal(): void
+    {
+        $guru = User::factory()->guru()->create();
+        $kelasA = SchoolClass::factory()->create(['name' => 'VII-A']);
+        $kelasB = SchoolClass::factory()->create(['name' => 'VII-B']);
+        $mapel = Subject::factory()->create(['name' => 'Matematika']);
+
+        Schedule::factory()->create([
+            'class_id' => $kelasA->id,
+            'subject_id' => $mapel->id,
+            'teacher_id' => $guru->id,
+            'day_of_week' => DayOfWeek::Senin,
+            'start_time' => '07:00:00',
+            'end_time' => '08:00:00',
+        ]);
+
+        Schedule::factory()->create([
+            'class_id' => $kelasB->id,
+            'subject_id' => $mapel->id,
+            'teacher_id' => $guru->id,
+            'day_of_week' => DayOfWeek::Senin,
+            'start_time' => '09:00:00',
+            'end_time' => '10:00:00',
+        ]);
+
+        try {
+            app(ScheduleManager::class)->save(null, [
+                'class_id' => SchoolClass::factory()->create()->id,
+                'subject_id' => $mapel->id,
+                'teacher_id' => $guru->id,
+                'day_of_week' => '1',
+                'start_time' => '07:30',
+                'end_time' => '09:30',
+            ]);
+
+            $this->fail('Jamnya bertindih dengan dua jadwal, seharusnya ditolak.');
+        } catch (ValidationException $e) {
+            $pesan = $e->errors()['start_time'][0];
+
+            $this->assertStringContainsString('VII-A', $pesan);
+            $this->assertStringContainsString('VII-B', $pesan);
+        }
+    }
+
     public function test_jadwal_sepada_tetap_diterima(): void
     {
         $admin = User::factory()->admin()->create();

@@ -22,6 +22,7 @@ final class ScheduleConflictDetector
         $selesai = $this->toSeconds($endTime);
 
         return Schedule::query()
+            ->with(['schoolClass', 'subject'])
             ->where('teacher_id', $teacher->id)
             ->where('day_of_week', $dayOfWeek)
             ->when($ignoreScheduleId, fn ($query) => $query->whereKeyNot($ignoreScheduleId))
