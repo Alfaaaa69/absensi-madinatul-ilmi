@@ -14,5 +14,5 @@ Route::middleware('auth')->prefix('master')->name('master.')->group(function ():
     Route::get('kelas', ClassManagement::class)->name('kelas');
     Route::get('jadwal', ScheduleManagement::class)->name('jadwal');
     Route::get('siswa', StudentManagement::class)->name('siswa');
-    Route::get('impor-siswa', StudentImport::class)->name('impor-siswa');
+    Route::get('siswa/impor', StudentImport::class)->name('siswa.impor');
 });

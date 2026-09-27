@@ -3456,7 +3456,7 @@ git commit -m "feat: CRUD siswa dengan pencarian, filter, arsip, dan pemulihan"
 - Create: `app/Livewire/StudentImport.php`
 - Create: `resources/views/livewire/student-import.blade.php`
 - Create: `tests/Support/StudentRowsSheet.php`
-- Modify: `routes/master.php` (tambah `Route::get('impor-siswa', StudentImport::class)->name('impor-siswa');`)
+- Modify: `routes/master.php` (tambah `Route::get('siswa/impor', StudentImport::class)->name('siswa.impor');`)
 - Modify: `resources/views/components/nav/data-master.blade.php` (link "Impor Siswa", `adminOnly`)
 - Test: `tests/Feature/Livewire/StudentImportTest.php`
 
@@ -4254,14 +4254,16 @@ Subtotal test yang ditulis plan ini:
 
 | Task | File test | Jumlah |
 |---|---|---|
-| Task 0 | `Policy/DataMasterPolicyTest.php` | 5 |
-| Task 1 | `Livewire/AcademicYearManagementTest.php` | 7 |
-| Task 2 | `Livewire/SubjectManagementTest.php` | 7 |
-| Task 3 | `Livewire/ClassManagementTest.php` | 9 |
-| Task 4 | `Livewire/ScheduleManagementTest.php` | 8 |
-| Task 5 | `Livewire/StudentManagementTest.php` | 8 |
-| Task 6 | `Livewire/StudentImportTest.php` | 7 |
-| **Total** | | **51** |
+| Task 0 | `Policy/DataMasterPolicyTest.php` | 6 |
+| Task 1 | `Livewire/AcademicYearManagementTest.php` | 8 |
+| Task 2 | `Livewire/SubjectManagementTest.php` | 10 |
+| Task 3 | `Livewire/ClassManagementTest.php` | 13 |
+| Task 4 | `Livewire/ScheduleManagementTest.php` | 11 |
+| Task 5 | `Livewire/StudentManagementTest.php` | 10 |
+| Task 6 | `Livewire/StudentImportTest.php` | 11 |
+| **Total** | | **69** |
+
+Seluruh angka di tabel ini sudah diverifikasi satu per satu dengan `php artisan test --filter=<file>` di branch `feat/plan-3-data-master`; angka di "Expected" Step 1-6 yang lebih kecil sudah usang. Suite penuh: **232 test, 600 assertion, 0 gagal, 0 skipped**.
 
 - [ ] **Step 2: Pastikan test Plan 1 dan Plan 2 tidak bocor**
 
@@ -4271,7 +4273,9 @@ php artisan test --filter=SchemaIntegrityTest
 php artisan test --filter=DemoSchoolSeederTest
 ```
 
-Expected: `PolicyTest` 24 lulus (19 Plan 1 + 5 Task 0), `SchemaIntegrityTest` 8 lulus, `DemoSchoolSeederTest` lulus. Kalau salah satu gagal, plan ini mengubah sesuatu yang seharusnya tidak disentuh — periksa `SchoolClassPolicy::viewRecap`, `SchedulePolicy::recordAttendance`, dan `StudentPolicy`.
+Expected: `PolicyTest` 26 lulus (20 Plan 1 + 6 Task 0), `SchemaIntegrityTest` 8 lulus, `DemoSchoolSeederTest` 7 lulus. Kalau salah satu gagal, plan ini mengubah sesuatu yang seharusnya tidak disentuh — periksa `SchoolClassPolicy::viewRecap`, `SchedulePolicy::recordAttendance`, dan `StudentPolicy`.
+
+Tiga angka itu sudah diverifikasi di branch `feat/plan-3-data-master`.
 
 - [ ] **Step 3: Periksa route**
 
@@ -4325,7 +4329,7 @@ git commit -m "chore: verifikasi suite penuh dan route data master"
 php artisan test
 ```
 
-Target: **semua lulus, 0 gagal, 0 skipped.** Test yang ditulis plan ini: 51.
+Target: **semua lulus, 0 gagal, 0 skipped.** Test yang ditulis plan ini: 69. Suite penuh 232 test, 600 assertion — sudah diverifikasi di branch `feat/plan-3-data-master`.
 
 Cakupan spec — setiap aturan yang dipakai plan ini harus punya test:
 

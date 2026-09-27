@@ -281,7 +281,7 @@ class StudentImportTest extends TestCase
     {
         $guru = User::factory()->guru()->create(['is_active' => true]);
 
-        $this->actingAs($guru)->get('/master/impor-siswa')->assertForbidden();
+        $this->actingAs($guru)->get('/master/siswa/impor')->assertForbidden();
     }
 
     public function test_admin_bisa_membuka_halaman_impor(): void
@@ -289,7 +289,7 @@ class StudentImportTest extends TestCase
         $admin = User::factory()->admin()->create(['is_active' => true]);
 
         $this->actingAs($admin)
-            ->get('/master/impor-siswa')
+            ->get('/master/siswa/impor')
             ->assertOk()
             ->assertSee('Impor Siswa');
     }
