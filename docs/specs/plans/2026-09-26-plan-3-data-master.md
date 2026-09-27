@@ -2820,12 +2820,12 @@ namespace Tests\Feature\Livewire;
 
 use App\Enums\StudentGender;
 use App\Livewire\StudentManagement;
+use App\Models\AcademicYear;
 use App\Models\Attendance;
 use App\Models\Schedule;
 use App\Models\SchoolClass;
 use App\Models\Student;
 use App\Models\User;
-use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -2907,7 +2907,7 @@ class StudentManagementTest extends TestCase
             ->assertSee('punya riwayat absensi');
 
         $this->assertSoftDeleted('students', ['id' => $siswa->id]);
-        $this->assertSame(0, Student::count());
+        $this->assertFalse(Student::query()->whereKey($siswa->id)->exists());
         $this->assertDatabaseHas('attendances', ['id' => $absensi->id]);
     }
 
@@ -2988,15 +2988,43 @@ class StudentManagementTest extends TestCase
         ]);
     }
 
+    public function test_daftar_kelas_menampilkan_tahun_ajaran(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $tahun = AcademicYear::factory()->create(['name' => '2025/2026']);
+        SchoolClass::factory()->create([
+            'academic_year_id' => $tahun->id,
+            'name' => 'VII-A',
+        ]);
+
+        Livewire::actingAs($admin)
+            ->test(StudentManagement::class)
+            ->assertSee('VII-A')
+            ->assertSee('2025/2026');
+    }
+
     public function test_guru_tidak_bisa_membuka_halaman_siswa(): void
     {
-        $this->expectException(AuthorizationException::class);
+        $guru = User::factory()->guru()->create(['is_active' => true]);
 
-        Livewire::actingAs(User::factory()->guru()->create())
-            ->test(StudentManagement::class);
+        $this->actingAs($guru)->get('/master/siswa')->assertForbidden();
+    }
+
+    public function test_admin_bisa_membuka_halaman_siswa(): void
+    {
+        $admin = User::factory()->admin()->create(['is_active' => true]);
+
+        $this->actingAs($admin)
+            ->get('/master/siswa')
+            ->assertOk()
+            ->assertSee('Siswa');
     }
 }
 ```
+
+`test_siswa_diarsipkan_riwayat_absensinya_tetap_utuh` tidak boleh memakai `assertSame(0, Student::count())`. `AttendanceFactory::definition()` membuat jadwal **dan** siswa sendiri supaya kelas siswa sama dengan kelas jadwal, jadi ada siswa tambahan dari factory. Yang dibuktikan test ini adalah "siswa ini tidak lagi aktif", bukan "tidak ada siswa sama sekali" - itu assertion `Student::query()->whereKey($siswa->id)->exists()`. Bug yang sama sudah muncul di Task 3 dengan `AttendanceFactory`.
+
+`test_daftar_kelas_menampilkan_tahun_ajaran` menjaga label kelas di pilihan kelas dan di tabel. Kelas dibuat ulang tiap tahun ajaran (spec D2), jadi nama `VII-A` ada di lebih dari satu baris `classes`; menampilkan `VII-A` saja membuat admin tidak bisa tahu kelas tahun berapa yang dimaksud. Karena itu `daftarKelas` dan tabel siswa memuat `academicYear->name`, dan `tahunAjaran` yang tidak terpakai di versi lama plan dihapus dari data view.
 
 `test_siswa_naik_kelas_menyalin_nisn_tetap_valid` adalah penjaga `Rule::unique(...)->ignore($this->editingId)`. Tanpa `ignore`, memindahkan siswa dengan NISN yang sama selalu gagal dengan "NISN sudah terdaftar" — padahal itu siswa yang sama, bukan duplikat. Pindah kelas adalah **update `class_id`**, bukan baris baru (spec §3).
 
@@ -3022,9 +3050,12 @@ use Illuminate\Support\Facades\DB;
 
 final class StudentManager
 {
+    /**
+     * @param  array{class_id: string, nisn: string, name: string, gender: string}  $data
+     */
     public function save(?Student $student, array $data): Student
     {
-        return DB::transaction(function () use ($student, $data) {
+        return DB::transaction(function () use ($student, $data): Student {
             $siswa = $student ?? new Student;
 
             $siswa->fill([
@@ -3059,15 +3090,17 @@ final class StudentManager
 namespace App\Livewire;
 
 use App\Enums\StudentGender;
-use App\Models\AcademicYear;
 use App\Models\SchoolClass;
 use App\Models\Student;
 use App\Services\StudentManager;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
+use Livewire\Attributes\Layout;
 use Livewire\Component;
 
+#[Layout('layouts.app')]
 class StudentManagement extends Component
 {
     public ?string $editingId = null;
@@ -3090,6 +3123,9 @@ class StudentManagement extends Component
 
     public int $page = 1;
 
+    /**
+     * @return array<string, mixed>
+     */
     protected function rules(): array
     {
         return [
@@ -3101,7 +3137,10 @@ class StudentManagement extends Component
                 Rule::unique('students', 'nisn')->ignore($this->editingId),
             ],
             'name' => ['required', 'string', 'max:100'],
-            'gender' => ['required', Rule::in(array_column(StudentGender::cases(), 'value'))],
+            'gender' => [
+                'required',
+                Rule::in(array_map(fn (StudentGender $item) => $item->value, StudentGender::cases())),
+            ],
         ];
     }
 
@@ -3204,183 +3243,187 @@ class StudentManagement extends Component
         Gate::authorize('create', Student::class);
 
         return view('livewire.student-management', [
-            'tahunAjaran' => AcademicYear::query()->orderByDesc('start_date')->get(),
             'daftarKelas' => SchoolClass::query()
+                ->with('academicYear')
                 ->orderBy('grade_level')
                 ->orderBy('name')
                 ->get(),
             'jenisKelamin' => StudentGender::cases(),
-            'siswa' => Student::query()
-                ->when($this->showArchived, fn ($query) => $query->onlyTrashed())
-                ->when($this->search !== '', fn ($query) => $query->where(function ($query) {
-                    $query->where('nisn', 'like', '%' . $this->search . '%')
-                        ->orWhere('name', 'like', '%' . $this->search . '%');
-                }))
-                ->when($this->filterClassId !== '', fn ($query) => $query->where('class_id', $this->filterClassId))
-                ->when($this->filterGender !== '', fn ($query) => $query->where('gender', $this->filterGender))
-                ->with('schoolClass')
+            'siswa' => $this->daftarSiswa()
+                ->with('schoolClass.academicYear')
                 ->orderBy('nisn')
-                ->forPage($this->page, 15),
-            'totalSiswa' => Student::query()
-                ->when($this->showArchived, fn ($query) => $query->onlyTrashed())
-                ->when($this->search !== '', fn ($query) => $query->where(function ($query) {
-                    $query->where('nisn', 'like', '%' . $this->search . '%')
-                        ->orWhere('name', 'like', '%' . $this->search . '%');
-                }))
-                ->when($this->filterClassId !== '', fn ($query) => $query->where('class_id', $this->filterClassId))
-                ->when($this->filterGender !== '', fn ($query) => $query->where('gender', $this->filterGender))
-                ->count(),
-        ]);
+                ->forPage($this->page, 15)
+                ->get(),
+            'totalSiswa' => $this->daftarSiswa()->count(),
+        ])->title('Siswa');
+    }
+
+    /**
+     * Daftar dan total harus memakai filter yang sama, jadi rantainya
+     * dibangun di satu tempat. Kalau dirantai dua kali, filter yang
+     * berubah di salah satunya membuat total tidak cocok dengan isi tabel.
+     *
+     * @return Builder<Student>
+     */
+    private function daftarSiswa(): Builder
+    {
+        return Student::query()
+            ->when($this->showArchived, fn (Builder $query) => $query->onlyTrashed())
+            ->when($this->search !== '', fn (Builder $query) => $query->where(function (Builder $query): void {
+                $query->where('nisn', 'like', '%'.$this->search.'%')
+                    ->orWhere('name', 'like', '%'.$this->search.'%');
+            }))
+            ->when($this->filterClassId !== '', fn (Builder $query) => $query->where('class_id', $this->filterClassId))
+            ->when($this->filterGender !== '', fn (Builder $query) => $query->where('gender', $this->filterGender));
     }
 }
 ```
 
-Guard di `render()` memakai ability `create`, bukan `viewAny`. `StudentPolicy::viewAny` mengizinkan guru yang punya jadwal — itu benar untuk dashboard Plan 4, tapi halaman ini layar admin, jadi yang diuji adalah hak membuat. Guru yang lolos lewat `viewAny` tetap ditolak di sini, dan `StudentPolicy::create` tetap satu-satunya sumber kebenaran.
+Guard di `render()` memakai ability `create`, bukan `viewAny`. `StudentPolicy::viewAny` mengizinkan guru yang punya jadwal — itu benar untuk dashboard Plan 4, tapi halaman ini layar admin, jadi yang diuji adalah hak membuat. Guru yang lolos lewat `viewAny` tetap ditolak di sini, dan `StudentPolicy::create` tetap satu-satunya sumber kebenaran. Component ini tidak punya `mount()`: tidak ada state yang perlu diinisialisasi dari URL, jadi guard di `render()` sudah menutup halaman dan tetap ikut jalan pada request AJAX Livewire.
 
-Paginasi 15 baris per halaman dikendalikan property `page`, bukan trait `WithPagination`, supaya component ini tidak bergantung pada API trait yang berubah antar major Livewire. Filter dan pencarian di-scope di query builder, tidak di view. 210 siswa sudah cukup untuk membuat filter di frontend terasa salah: baris yang tidak cocok masih ikut ter-render.
+Paginasi 15 baris per halaman dikendalikan property `page`, bukan trait `WithPagination`, supaya component ini tidak bergantung pada API trait yang berubah antar major Livewire. Filter dan pencarian di-scope di query builder, tidak di view. 210 siswa sudah cukup untuk membuat filter di frontend terasa salah: baris yang tidak cocok masih ikut ter-render. Rantai filter diambil dari method `daftarSiswa()` supaya tabel dan `totalSiswa` tidak bisa berbeda karena salah satu rantai lupa diubah.
 
 `resources/views/livewire/student-management.blade.php`:
 
 ```blade
-<x-layouts.app title="Siswa">
+<div class="space-y-6">
+    <h1 class="text-lg font-semibold text-gray-900">Siswa</h1>
 
-    <div class="space-y-6">
-        <h1 class="text-lg font-semibold text-gray-900">Siswa</h1>
+    @if (session('sukses'))
+        <div class="rounded-md bg-green-50 px-4 py-3 text-sm text-green-800">{{ session('sukses') }}</div>
+    @endif
 
-        @if (session('sukses'))
-            <div class="rounded-md bg-green-50 px-4 py-3 text-sm text-green-800">{{ session('sukses') }}</div>
-        @endif
+    <form wire:submit="save" class="grid gap-3 rounded-lg border border-gray-200 bg-white p-4 md:grid-cols-5">
+        <label class="block text-sm">
+            <span class="text-gray-700">NISN</span>
+            <input type="text" wire:model="nisn" class="mt-1 w-full rounded border-gray-300" />
+            @error('nisn') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+        </label>
 
-        <form wire:submit="save" class="grid gap-3 rounded-lg border border-gray-200 bg-white p-4 md:grid-cols-5">
-            <label class="block text-sm">
-                <span class="text-gray-700">NISN</span>
-                <input type="text" wire:model="nisn" class="mt-1 w-full rounded border-gray-300" />
-                @error('nisn') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
-            </label>
+        <label class="block text-sm">
+            <span class="text-gray-700">Nama</span>
+            <input type="text" wire:model="name" class="mt-1 w-full rounded border-gray-300" />
+            @error('name') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+        </label>
 
-            <label class="block text-sm">
-                <span class="text-gray-700">Nama</span>
-                <input type="text" wire:model="name" class="mt-1 w-full rounded border-gray-300" />
-                @error('name') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
-            </label>
+        <label class="block text-sm">
+            <span class="text-gray-700">Jenis Kelamin</span>
+            <select wire:model="gender" class="mt-1 w-full rounded border-gray-300">
+                @foreach ($jenisKelamin as $item)
+                    <option value="{{ $item->value }}">{{ $item->value === 'L' ? 'Laki-laki' : 'Perempuan' }}</option>
+                @endforeach
+            </select>
+            @error('gender') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+        </label>
 
-            <label class="block text-sm">
-                <span class="text-gray-700">Jenis Kelamin</span>
-                <select wire:model="gender" class="mt-1 w-full rounded border-gray-300">
-                    @foreach ($jenisKelamin as $item)
-                        <option value="{{ $item->value }}">{{ $item->value === 'L' ? 'Laki-laki' : 'Perempuan' }}</option>
-                    @endforeach
-                </select>
-                @error('gender') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
-            </label>
+        <label class="block text-sm">
+            <span class="text-gray-700">Kelas</span>
+            <select wire:model="class_id" class="mt-1 w-full rounded border-gray-300">
+                <option value="">Pilih kelas</option>
+                @foreach ($daftarKelas as $kelas)
+                    <option value="{{ $kelas->id }}">{{ $kelas->name }} ({{ $kelas->academicYear->name }})</option>
+                @endforeach
+            </select>
+            @error('class_id') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+        </label>
 
-            <label class="block text-sm">
-                <span class="text-gray-700">Kelas</span>
-                <select wire:model="class_id" class="mt-1 w-full rounded border-gray-300">
-                    <option value="">Pilih kelas</option>
-                    @foreach ($daftarKelas as $kelas)
-                        <option value="{{ $kelas->id }}">{{ $kelas->name }}</option>
-                    @endforeach
-                </select>
-                @error('class_id') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
-            </label>
-
-            <div class="flex items-end gap-2">
-                <button type="submit" class="rounded bg-gray-900 px-3 py-2 text-sm text-white">
-                    {{ $editingId === null ? 'Tambah' : 'Perbarui' }}
-                </button>
-                <button type="button" wire:click="newForm" class="rounded border px-3 py-2 text-sm">Reset</button>
-            </div>
-        </form>
-
-        <div class="grid gap-3 rounded-lg border border-gray-200 bg-white p-4 md:grid-cols-4">
-            <label class="block text-sm">
-                <span class="text-gray-700">Cari NISN atau Nama</span>
-                <input type="search" wire:model.live.debounce.300ms="search"
-                    class="mt-1 w-full rounded border-gray-300" />
-            </label>
-
-            <label class="block text-sm">
-                <span class="text-gray-700">Filter Kelas</span>
-                <select wire:model.live="filterClassId" class="mt-1 w-full rounded border-gray-300">
-                    <option value="">Semua kelas</option>
-                    @foreach ($daftarKelas as $kelas)
-                        <option value="{{ $kelas->id }}">{{ $kelas->name }}</option>
-                    @endforeach
-                </select>
-            </label>
-
-            <label class="block text-sm">
-                <span class="text-gray-700">Filter Jenis Kelamin</span>
-                <select wire:model.live="filterGender" class="mt-1 w-full rounded border-gray-300">
-                    <option value="">Semua</option>
-                    @foreach ($jenisKelamin as $item)
-                        <option value="{{ $item->value }}">{{ $item->value === 'L' ? 'Laki-laki' : 'Perempuan' }}</option>
-                    @endforeach
-                </select>
-            </label>
-
-            <label class="flex items-end gap-2 text-sm text-gray-700">
-                <input type="checkbox" wire:click="toggleArsip" />
-                Tampilkan yang diarsipkan
-            </label>
+        <div class="flex items-end gap-2">
+            <button type="submit" class="rounded bg-gray-900 px-3 py-2 text-sm text-white">
+                {{ $editingId === null ? 'Tambah' : 'Perbarui' }}
+            </button>
+            <button type="button" wire:click="newForm" class="rounded border px-3 py-2 text-sm">Reset</button>
         </div>
+    </form>
 
-        <div class="overflow-x-auto rounded-lg border border-gray-200 bg-white">
-            <table class="min-w-full text-sm">
-                <thead class="bg-gray-50 text-left text-xs uppercase text-gray-500">
-                    <tr>
-                        <th class="px-4 py-2">NISN</th>
-                        <th class="px-4 py-2">Nama</th>
-                        <th class="px-4 py-2">L/P</th>
-                        <th class="px-4 py-2">Kelas</th>
-                        <th class="px-4 py-2 text-right">Aksi</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse ($siswa as $item)
-                        <tr class="border-t border-gray-100">
-                            <td class="px-4 py-2">{{ $item->nisn }}</td>
-                            <td class="px-4 py-2">
-                                {{ $item->name }}
-                                @if ($item->trashed())
-                                    <span class="ml-2 rounded bg-gray-100 px-2 py-1 text-xs text-gray-600">Diarsipkan</span>
-                                @endif
-                            </td>
-                            <td class="px-4 py-2">{{ $item->gender->value }}</td>
-                            <td class="px-4 py-2">{{ $item->schoolClass->name }}</td>
-                            <td class="px-4 py-2 text-right">
-                                <button wire:click="editForm('{{ $item->id }}')" class="text-sm text-blue-700">Ubah</button>
-                                @if ($item->trashed())
-                                    <button wire:click="pulihkan('{{ $item->id }}')" class="ml-2 text-sm text-green-700">Pulihkan</button>
-                                @else
-                                    <button wire:click="arsipkan('{{ $item->id }}')" class="ml-2 text-sm text-red-700">Arsipkan</button>
-                                @endif
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="5" class="px-4 py-6 text-center text-gray-500">
-                                Tidak ada siswa yang cocok dengan filter.
-                            </td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
+    <div class="grid gap-3 rounded-lg border border-gray-200 bg-white p-4 md:grid-cols-4">
+        <label class="block text-sm">
+            <span class="text-gray-700">Cari NISN atau Nama</span>
+            <input type="search" wire:model.live.debounce.300ms="search"
+                class="mt-1 w-full rounded border-gray-300" />
+        </label>
 
-        <div class="flex items-center justify-between text-sm text-gray-600">
-            <span>{{ $totalSiswa }} siswa</span>
-            <span class="flex gap-2">
-                <button wire:click="gotoPage({{ $page - 1 }})" @disabled($page <= 1)
-                    class="rounded border px-3 py-1 disabled:opacity-40">Sebelumnya</button>
-                <span>Halaman {{ $page }}</span>
-                <button wire:click="gotoPage({{ $page + 1 }})" @disabled($page * 15 >= $totalSiswa)
-                    class="rounded border px-3 py-1 disabled:opacity-40">Berikutnya</button>
-            </span>
-        </div>
+        <label class="block text-sm">
+            <span class="text-gray-700">Filter Kelas</span>
+            <select wire:model.live="filterClassId" class="mt-1 w-full rounded border-gray-300">
+                <option value="">Semua kelas</option>
+                @foreach ($daftarKelas as $kelas)
+                    <option value="{{ $kelas->id }}">{{ $kelas->name }} ({{ $kelas->academicYear->name }})</option>
+                @endforeach
+            </select>
+        </label>
+
+        <label class="block text-sm">
+            <span class="text-gray-700">Filter Jenis Kelamin</span>
+            <select wire:model.live="filterGender" class="mt-1 w-full rounded border-gray-300">
+                <option value="">Semua</option>
+                @foreach ($jenisKelamin as $item)
+                    <option value="{{ $item->value }}">{{ $item->value === 'L' ? 'Laki-laki' : 'Perempuan' }}</option>
+                @endforeach
+            </select>
+        </label>
+
+        <label class="flex items-end gap-2 text-sm text-gray-700">
+            <input type="checkbox" wire:click="toggleArsip" />
+            Tampilkan yang diarsipkan
+        </label>
     </div>
-</x-layouts.app>
+
+    <div class="overflow-x-auto rounded-lg border border-gray-200 bg-white">
+        <table class="min-w-full text-sm">
+            <thead class="bg-gray-50 text-left text-xs uppercase text-gray-500">
+                <tr>
+                    <th class="px-4 py-2">NISN</th>
+                    <th class="px-4 py-2">Nama</th>
+                    <th class="px-4 py-2">L/P</th>
+                    <th class="px-4 py-2">Kelas</th>
+                    <th class="px-4 py-2 text-right">Aksi</th>
+                </tr>
+            </thead>
+            <tbody>
+                @forelse ($siswa as $item)
+                    <tr class="border-t border-gray-100">
+                        <td class="px-4 py-2">{{ $item->nisn }}</td>
+                        <td class="px-4 py-2">
+                            {{ $item->name }}
+                            @if ($item->trashed())
+                                <span class="ml-2 rounded bg-gray-100 px-2 py-1 text-xs text-gray-600">Diarsipkan</span>
+                            @endif
+                        </td>
+                        <td class="px-4 py-2">{{ $item->gender->value }}</td>
+                        <td class="px-4 py-2">
+                            {{ $item->schoolClass->name }} ({{ $item->schoolClass->academicYear->name }})
+                        </td>
+                        <td class="px-4 py-2 text-right">
+                            <button wire:click="editForm('{{ $item->id }}')" class="text-sm text-blue-700">Ubah</button>
+                            @if ($item->trashed())
+                                <button wire:click="pulihkan('{{ $item->id }}')" class="ml-2 text-sm text-green-700">Pulihkan</button>
+                            @else
+                                <button wire:click="arsipkan('{{ $item->id }}')" class="ml-2 text-sm text-red-700">Arsipkan</button>
+                            @endif
+                        </td>
+                    </tr>
+                @empty
+                    <tr>
+                        <td colspan="5" class="px-4 py-6 text-center text-gray-500">
+                            Tidak ada siswa yang cocok dengan filter.
+                        </td>
+                    </tr>
+                @endforelse
+            </tbody>
+        </table>
+    </div>
+
+    <div class="flex items-center justify-between text-sm text-gray-600">
+        <span>{{ $totalSiswa }} siswa</span>
+        <span class="flex gap-2">
+            <button wire:click="gotoPage({{ $page - 1 }})" @disabled($page <= 1)
+                class="rounded border px-3 py-1 disabled:opacity-40">Sebelumnya</button>
+            <span>Halaman {{ $page }}</span>
+            <button wire:click="gotoPage({{ $page + 1 }})" @disabled($page * 15 >= $totalSiswa)
+                class="rounded border px-3 py-1 disabled:opacity-40">Berikutnya</button>
+        </span>
+    </div>
+</div>
 ```
 
 - [ ] **Step 4: Jalankan test, pastikan lulus**
@@ -3389,7 +3432,7 @@ Paginasi 15 baris per halaman dikendalikan property `page`, bukan trait `WithPag
 php artisan test --filter=StudentManagementTest
 ```
 
-**Expected: 8 tests pass**
+**Expected: 10 tests pass** (8 test di Task 5 + 2 test tambahan: label kelas menampilkan tahun ajaran, admin dapat 200). Angka 10 sudah diverifikasi dengan `php artisan test --filter=StudentManagementTest` di branch `feat/plan-3-data-master`.
 
 Kalau `test_pencarian_dan_filter_kelas_dan_jenis_kelamin` gagal, filter sedang dijalankan di view (misalnya `@if` per baris) alih-alih di query builder.
 
