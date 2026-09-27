@@ -1,6 +1,8 @@
 <?php
 
+use App\Http\Middleware\EnsureUserIsActive;
 use App\Livewire\Auth\Login;
+use App\Livewire\UserManagement;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
@@ -15,3 +17,7 @@ Route::post('/logout', function () {
 
     return redirect()->route('login');
 })->name('logout');
+
+Route::middleware(['auth', EnsureUserIsActive::class])->group(function () {
+    Route::get('/user', UserManagement::class)->name('user.index');
+});
