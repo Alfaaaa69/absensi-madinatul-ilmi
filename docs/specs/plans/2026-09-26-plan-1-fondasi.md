@@ -60,7 +60,7 @@ app/
     RecapPeriod.php              # value object: rentang tanggal tervalidasi
     RecapPeriodOutOfRange.php    # exception
     RecapResult.php              # value object: hasil matrix
-    RecapQueries/
+    Queries/
       Concerns/BuildsRecapMatrix.php
       HomeroomClassRecapQuery.php
       TeacherSubjectRecapQuery.php
@@ -2857,8 +2857,8 @@ git commit -m "feat: AttendanceRecorder lewat Gate dan deteksi bentrok jadwal"
 
 **Files:**
 - Create: `app/Recap/RecapResult.php`
-- Create: `app/Recap/RecapQueries/Concerns/BuildsRecapMatrix.php`
-- Create: `app/Recap/RecapQueries/{HomeroomClassRecapQuery,TeacherSubjectRecapQuery,AdminRecapQuery}.php`
+- Create: `app/Recap/Queries/Concerns/BuildsRecapMatrix.php`
+- Create: `app/Recap/Queries/{HomeroomClassRecapQuery,TeacherSubjectRecapQuery,AdminRecapQuery}.php`
 - Test: `tests/Feature/Recap/{HomeroomClassRecapQueryTest,TeacherSubjectRecapQueryTest,AdminRecapQueryTest}.php`
 
 **Consumes:** `RecapPeriod` (Task 5), model (Task 3)
@@ -2883,7 +2883,7 @@ use App\Models\Subject;
 use App\Models\User;
 use App\Recap\RecapPeriod;
 use App\Recap\RecapPeriodOutOfRange;
-use App\Recap\RecapQueries\HomeroomClassRecapQuery;
+use App\Recap\Queries\HomeroomClassRecapQuery;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -3085,7 +3085,7 @@ use App\Models\Student;
 use App\Models\Subject;
 use App\Models\User;
 use App\Recap\RecapPeriod;
-use App\Recap\RecapQueries\TeacherSubjectRecapQuery;
+use App\Recap\Queries\TeacherSubjectRecapQuery;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -3214,7 +3214,7 @@ use App\Models\SchoolClass;
 use App\Models\Student;
 use App\Recap\RecapPeriod;
 use App\Recap\RecapPeriodOutOfRange;
-use App\Recap\RecapQueries\AdminRecapQuery;
+use App\Recap\Queries\AdminRecapQuery;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -3283,7 +3283,7 @@ class AdminRecapQueryTest extends TestCase
 php artisan test --filter=RecapQueryTest
 ```
 
-Expected: FAIL — `Class "App\Recap\RecapQueries\HomeroomClassRecapQuery" not found`.
+Expected: FAIL — `Class "App\Recap\Queries\HomeroomClassRecapQuery" not found`.
 
 - [ ] **Step 5: Tulis RecapResult**
 
@@ -3330,12 +3330,12 @@ final class RecapResult implements Arrayable
 
 - [ ] **Step 6: Tulis trait pengumpul matriks**
 
-`app/Recap/RecapQueries/Concerns/BuildsRecapMatrix.php`:
+`app/Recap/Queries/Concerns/BuildsRecapMatrix.php`:
 
 ```php
 <?php
 
-namespace App\Recap\RecapQueries\Concerns;
+namespace App\Recap\Queries\Concerns;
 
 use App\Models\Schedule;
 use App\Models\Student;
@@ -3482,19 +3482,19 @@ Tiga keputusan di trait ini yang perlu tidak diubah diam-diam:
 
 - [ ] **Step 7: Tulis tiga query**
 
-`app/Recap/RecapQueries/HomeroomClassRecapQuery.php`:
+`app/Recap/Queries/HomeroomClassRecapQuery.php`:
 
 ```php
 <?php
 
-namespace App\Recap\RecapQueries;
+namespace App\Recap\Queries;
 
 use App\Models\AcademicYear;
 use App\Models\Schedule;
 use App\Models\SchoolClass;
 use App\Models\User;
 use App\Recap\RecapPeriod;
-use App\Recap\RecapQueries\Concerns\BuildsRecapMatrix;
+use App\Recap\Queries\Concerns\BuildsRecapMatrix;
 use App\Recap\RecapResult;
 use LogicException;
 
@@ -3546,12 +3546,12 @@ final class HomeroomClassRecapQuery
 
 `where('academic_year_id', ...)` di query ini **wajib**. Kelas dibuat ulang tiap tahun, jadi seorang wali bisa jadi wali dari dua baris `classes` (ganjil + genap). Tanpa filter ini, rekap ganjil ikut menarik data genap.
 
-`app/Recap/RecapQueries/TeacherSubjectRecapQuery.php`:
+`app/Recap/Queries/TeacherSubjectRecapQuery.php`:
 
 ```php
 <?php
 
-namespace App\Recap\RecapQueries;
+namespace App\Recap\Queries;
 
 use App\Models\AcademicYear;
 use App\Models\Schedule;
@@ -3559,7 +3559,7 @@ use App\Models\SchoolClass;
 use App\Models\Student;
 use App\Models\User;
 use App\Recap\RecapPeriod;
-use App\Recap\RecapQueries\Concerns\BuildsRecapMatrix;
+use App\Recap\Queries\Concerns\BuildsRecapMatrix;
 use App\Recap\RecapResult;
 use LogicException;
 
@@ -3609,12 +3609,12 @@ final class TeacherSubjectRecapQuery
 }
 ```
 
-`app/Recap/RecapQueries/AdminRecapQuery.php`:
+`app/Recap/Queries/AdminRecapQuery.php`:
 
 ```php
 <?php
 
-namespace App\Recap\RecapQueries;
+namespace App\Recap\Queries;
 
 use App\Models\AcademicYear;
 use App\Models\Schedule;
@@ -3622,7 +3622,7 @@ use App\Models\SchoolClass;
 use App\Models\Student;
 use App\Recap\RecapPeriod;
 use App\Recap\RecapPeriodOutOfRange;
-use App\Recap\RecapQueries\Concerns\BuildsRecapMatrix;
+use App\Recap\Queries\Concerns\BuildsRecapMatrix;
 use App\Recap\RecapResult;
 use LogicException;
 
@@ -3735,7 +3735,7 @@ use App\Models\SchoolClass;
 use App\Models\Student;
 use App\Recap\RecapExporter;
 use App\Recap\RecapPeriod;
-use App\Recap\RecapQueries\AdminRecapQuery;
+use App\Recap\Queries\AdminRecapQuery;
 use App\Recap\RecapResult;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;

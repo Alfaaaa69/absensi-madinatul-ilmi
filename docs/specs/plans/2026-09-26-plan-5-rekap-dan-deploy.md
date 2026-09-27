@@ -34,7 +34,7 @@ Nilai-nilai ini berlaku untuk **setiap task**. Jangan menyimpang tanpa keputusan
 | `app/Livewire/TeacherSubjectRecap.php` | Task 3 |
 | `app/Livewire/AdminAttendanceReport.php` | Task 5, ditambah Task 6 |
 | `app/Recap/RecapExporter.php` | Task 6 dan 8 (sudah ada dari Plan 1) |
-| `app/Recap/RecapQueries/HomeroomClassRecapQuery.php` | Task 1 dan 2 (lima query lain sudah ada dari Plan 1) |
+| `app/Recap/Queries/HomeroomClassRecapQuery.php` | Task 1 dan 2 (dua query class lain dan trait `BuildsRecapMatrix` sudah ada dari Plan 1) |
 | `resources/views/recap/partials/matrix.blade.php` | Task 1 |
 | `resources/views/recap/partials/filter-periode.blade.php` | Task 1 |
 | `resources/views/recap/partials/periode-error.blade.php` | Task 4 |
@@ -52,7 +52,7 @@ Nilai-nilai ini berlaku untuk **setiap task**. Jangan menyimpang tanpa keputusan
 - Create: `resources/views/recap/partials/filter-periode.blade.php`
 - Create: `resources/views/livewire/homeroom-class-recap.blade.php`
 - Create: `resources/views/recap/index.blade.php`
-- Modify: `app/Recap/RecapQueries/HomeroomClassRecapQuery.php` (tambah `forClass()` dan `ownedClasses()`)
+- Modify: `app/Recap/Queries/HomeroomClassRecapQuery.php` (tambah `forClass()` dan `ownedClasses()`)
 - Modify: `app/Providers/AppServiceProvider.php` (view composer untuk tab rekap)
 - Modify: `routes/web.php` (tambah `/rekap`)
 - Test: `tests/Feature/Livewire/HomeroomClassRecapTest.php`
@@ -224,7 +224,7 @@ trait InteractsWithRecapPeriod
 ```
 `RecapPeriodOutOfRange` adalah kasus input normal — pengguna salah pilih bulan — jadi exception itu ditangkap dan jadi pesan, bukan halaman 500.
 
-`app/Recap/RecapQueries/HomeroomClassRecapQuery.php` — tambahkan properti dan method ini:
+`app/Recap/Queries/HomeroomClassRecapQuery.php` — tambahkan properti dan method ini:
 ```php
     private ?SchoolClass $schoolClass = null;
     public function forClass(SchoolClass $schoolClass): self
@@ -278,7 +278,7 @@ namespace App\Livewire;
 use App\Livewire\Concerns\InteractsWithRecapPeriod;
 use App\Models\SchoolClass;
 use App\Recap\RecapPeriod;
-use App\Recap\RecapQueries\HomeroomClassRecapQuery;
+use App\Recap\Queries\HomeroomClassRecapQuery;
 use App\Recap\RecapResult;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
@@ -469,7 +469,7 @@ Daftar kelas untuk pemilih diambil dari `ownedClasses()`, bukan dari `$result->c
 
 ## Task 2: Drill-down riwayat siswa
 
-- Modify: `app/Recap/RecapQueries/HomeroomClassRecapQuery.php` (tambah `studentHistory()`)
+- Modify: `app/Recap/Queries/HomeroomClassRecapQuery.php` (tambah `studentHistory()`)
 - Modify: `app/Livewire/HomeroomClassRecap.php` (tambah `statusLabel()` dan dua helper privat)
 - Modify: `resources/views/livewire/homeroom-class-recap.blade.php` (sisipkan panel riwayat)
 - Test: `tests/Feature/Livewire/HomeroomClassRecapDrilldownTest.php`
@@ -542,7 +542,7 @@ Expected: FAIL — `Call to undefined method App\Livewire\HomeroomClassRecap::li
 
 - [ ] **Step 3: Tulis query, component, dan panel riwayat**
 
-`app/Recap/RecapQueries/HomeroomClassRecapQuery.php` — tambahkan `use App\Models\Student;`, `use Illuminate\Support\Collection;`, dan `use Illuminate\Support\Facades\DB;` bila belum ada, lalu method ini:
+`app/Recap/Queries/HomeroomClassRecapQuery.php` — tambahkan `use App\Models\Student;`, `use Illuminate\Support\Collection;`, dan `use Illuminate\Support\Facades\DB;` bila belum ada, lalu method ini:
 ```php
     /**
      * Riwayat harian seorang siswa untuk satu periode, hanya dari kelas yang diwalikan
@@ -728,7 +728,7 @@ namespace App\Livewire;
 use App\Livewire\Concerns\InteractsWithRecapPeriod;
 use App\Models\AcademicYear;
 use App\Recap\RecapPeriod;
-use App\Recap\RecapQueries\TeacherSubjectRecapQuery;
+use App\Recap\Queries\TeacherSubjectRecapQuery;
 use App\Recap\RecapResult;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -953,8 +953,9 @@ class AdminAttendanceReportTest extends TestCase
     {
         RecapScenario::waliKelas();
         Livewire::actingAs(User::factory()->admin()->create())->test(AdminAttendanceReport::class)
+            ->set('month', '2025-09')
             ->call('exportExcel')
-            ->assertFileDownloaded('rekap-absensi-2025-09.xlsx');
+            ->assertFileDownloaded('rekap-absensi-2025-09-01-2025-09-30.xlsx');
     }
     public function test_export_ditolak_saat_periode_tidak_valid(): void
     {
@@ -984,7 +985,7 @@ use App\Livewire\Concerns\InteractsWithRecapPeriod;
 use App\Models\AcademicYear;
 use App\Recap\RecapExporter;
 use App\Recap\RecapPeriod;
-use App\Recap\RecapQueries\AdminRecapQuery;
+use App\Recap\Queries\AdminRecapQuery;
 use App\Recap\RecapResult;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
@@ -1015,7 +1016,14 @@ class AdminAttendanceReport extends Component
     }
     public function exportExcel(): StreamedResponse
     {
-        return (new RecapExporter($this->hasilEkspor()))->toExcel();
+        $hasil = $this->hasilEkspor();
+        $excel = app(RecapExporter::class)->toExcel($hasil);
+
+        return response()->streamDownload(
+            static fn () => print($excel),
+            app(RecapExporter::class)->excelFilename($hasil),
+            ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
+        );
     }
     private function hasilEkspor(): RecapResult
     {
@@ -1037,6 +1045,8 @@ class AdminAttendanceReport extends Component
 }
 ```
 `exportExcel()` membangun ulang `RecapResult` lewat query yang sama dengan `render()`, jadi angka di file Excel dijamin sama dengan angka di layar. `abort(422)` dipakai, bukan pesan di layar, karena tidak ada file yang boleh diunduh. Task 6 menambah `exportPdf()` dengan pola `hasilEkspor()` yang sama persis.
+
+`RecapExporter` sudah ada dari Plan 1 dan tidak memakai constructor: `app(RecapExporter::class)->toExcel($hasil)` mengembalikan **string** byte, sedangkan nama berkasnya ada di method terpisah `excelFilename($hasil)`. Komponen yang merangkai string byte itu jadi respons download, karena download adalah urusan HTTP/Livewire, bukan urusan exporter. Jangan tulis file ke `storage/app` — kuota disk di shared hosting sering mepet.
 
 `resources/views/livewire/admin-attendance-report.blade.php`:
 ```blade
@@ -1082,18 +1092,15 @@ php artisan test --filter=AdminAttendanceReportTest
 
 ## Task 6: Export PDF
 
-- Modify: `composer.json` (tambah `barryvdh/laravel-dompdf`)
-- Modify: `app/Recap/RecapExporter.php` (tambah `toPdf()`)
+- Modify: `app/Recap/RecapExporter.php` (tambah parameter `$view` opsional ke `toPdf()`)
 - Modify: `app/Livewire/AdminAttendanceReport.php` (tambah `exportPdf()`)
 - Modify: `resources/views/livewire/admin-attendance-report.blade.php` (tambah tombol PDF)
 - Create: `resources/views/recap/pdf.blade.php`
 - Test: `tests/Feature/Recap/RecapExporterPdfTest.php`
 
-Laravel Excel tidak bisa menghasilkan PDF, jadi PDF memakai dompdf — paket PHP murni, tanpa binary eksternal yang bisa gagal di shared hosting.
-```powershell
-composer require barryvdh/laravel-dompdf
-```
-Kalau resolver Composer tidak menemukan versi yang cocok dengan gate Laravel Plan 1, ambil versi tertinggi yang constraint `illuminate/support`-nya mengizinkan major tersebut. Jangan mengubah gate di `composer.json` demi memaksa satu paket terpasang.
+`barryvdh/laravel-dompdf` **sudah terpasang** di Plan 1 Task 8 bersama `config/dompdf.php`. Plan ini tidak menambah dependency dan tidak menjalankan `composer require` lagi. PDF tetap memakai dompdf — paket PHP murni, tanpa binary eksternal yang bisa gagal di shared hosting.
+
+View `recap/print.blade.php` dari Plan 1 sudah ada dan sudah teruji. Plan ini menambah `recap/pdf.blade.php` sebagai **layout kedua**, bukan menggantinya: `print` memakai lembar lebar dengan kolom per mapel, sedangkan `pdf` memakai ringkasan per periode. Keduanya dibaca dari `RecapResult` yang sama, jadi angkanya tidak mungkin berbeda.
 
 - [ ] **Step 1: Tulis test yang gagal**
 
@@ -1103,7 +1110,7 @@ Kalau resolver Composer tidak menemukan versi yang cocok dengan gate Laravel Pla
 namespace Tests\Feature\Recap;
 use App\Livewire\AdminAttendanceReport;
 use App\Models\User;
-use App\Recap\{RecapPeriod, RecapQueries\AdminRecapQuery};
+use App\Recap\{RecapPeriod, Queries\AdminRecapQuery};
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\Support\RecapScenario;
@@ -1115,13 +1122,15 @@ class RecapExporterPdfTest extends TestCase
     {
         RecapScenario::waliKelas();
         Livewire::actingAs(User::factory()->admin()->create())->test(AdminAttendanceReport::class)
-            ->call('exportPdf')->assertFileDownloaded('rekap-absensi-2025-09.pdf');
+            ->set('month', '2025-09')
+            ->call('exportPdf')
+            ->assertFileDownloaded('rekap-absensi-2025-09-01-2025-09-30.pdf');
     }
     public function test_isi_pdf_menyalin_angka_dari_recap_result(): void
     {
         $s = RecapScenario::waliKelas();
         $hasil = app(AdminRecapQuery::class)->for(User::factory()->admin()->create(), $s->tahun)->run(RecapPeriod::monthly(2025, 9));
-        $html = view('recap.pdf', ['result' => $hasil, 'periode' => 'September 2025'])->render();
+        $html = view('recap.pdf', ['result' => $hasil, 'tahun' => $s->tahun])->render();
         $this->assertStringContainsString('Ahmad Fauzi', $html);
         $this->assertStringContainsString('Hadir 1', $html);
         $this->assertStringContainsString('Izin 1', $html);
@@ -1137,43 +1146,57 @@ class RecapExporterPdfTest extends TestCase
 Test kedua menguji isi PDF tanpa membuka file biner: view `recap.pdf` dirender langsung dengan `RecapResult` yang sama. Kalau angka di PDF berbeda dari layar, angka itu bukan dari `RecapResult` dan test ini pecah.
 
 - [ ] **Step 2: Jalankan test, pastikan gagal**
+
 ```powershell
 php artisan test --filter=RecapExporterPdfTest
 ```
-Expected: FAIL — `Call to undefined method App\Recap\RecapExporter::toPdf()`.
+Expected: FAIL — view `recap.pdf` belum ada, dan `toPdf()` belum menerima parameter view ketiga. `RecapExporter::toPdf()` sendiri sudah ada dari Plan 1, jadi bukan itu yang gagal.
 
-- [ ] **Step 3: Tulis `toPdf()`, view PDF, tombol, dan action**
+- [ ] **Step 3: Tambah parameter view, view PDF, tombol, dan action**
 
-`app/Recap/RecapExporter.php` — tambahkan `use Barryvdh\DomPDF\Facade\Pdf;` dan `use Symfony\Component\HttpFoundation\StreamedResponse;` bila belum ada, lalu method ini:
+`app/Recap/RecapExporter.php` — ubah `toPdf()` supaya menerima nama view. Ekspor tetap satu pintu; yang berubah hanya view mana yang dirender:
+
 ```php
-    public function toPdf(string $periode = ''): StreamedResponse
+    public function toPdf(RecapResult $result, ?AcademicYear $tahun = null, string $view = 'recap.print'): string
     {
-        $nama = 'rekap-absensi-'.($periode !== '' ? $periode : now()->format('Y-m')).'.pdf';
-        return response()->streamDownload(function () use ($periode): void {
-            echo Pdf::loadHTML(view('recap.pdf', ['result' => $this->result, 'periode' => $periode])->render())->output();
-        }, $nama, ['Content-Type' => 'application/pdf']);
+        $pdf = Pdf::loadView($view, [
+            'result' => $result,
+            'tahun' => $this->tahun($tahun),
+        ]);
+
+        $pdf->setPaper('a4', 'landscape');
+        $pdf->setOption('isRemoteEnabled', false);
+
+        return $pdf->output();
     }
 ```
-`streamDownload` dipakai, bukan `response()->download()`, supaya file tidak pernah ditulis ke `storage/app` — kuota disk di shared hosting sering mepet.
 
-`app/Livewire/AdminAttendanceReport.php` — tambahkan dua method ini, dengan `hasilEkspor()` yang sudah ada dari Task 5:
+`app/Livewire/AdminAttendanceReport.php` — tambahkan method ini, dengan `hasilEkspor()` yang sudah ada dari Task 5:
+
 ```php
     public function exportPdf(): StreamedResponse
     {
-        return (new RecapExporter($this->hasilEkspor()))->toPdf($this->slugPeriode());
-    }
-    private function slugPeriode(): string
-    {
-        return $this->periodType === 'daily' ? $this->date : $this->month;
+        $hasil = $this->hasilEkspor();
+        $pdf = app(RecapExporter::class)->toPdf($hasil, $this->year(), 'recap.pdf');
+
+        return response()->streamDownload(
+            static fn () => print($pdf),
+            app(RecapExporter::class)->pdfFilename($hasil),
+            ['Content-Type' => 'application/pdf'],
+        );
     }
 ```
+
+`streamDownload` dipakai, bukan `response()->download()`, supaya file tidak pernah ditulis ke `storage/app` — kuota disk di shared hosting sering mepet.
+
 `resources/views/recap/pdf.blade.php` — HTML print dengan gaya inline, supaya dompdf tidak mencari aset eksternal:
+
 ```blade
 <!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="utf-8">
-    <title>Rekap Absensi — {{ $periode }}</title>
+    <title>Rekap Absensi — {{ $result->period->label() }}</title>
     <style>
         body { font-family: DejaVu Sans, sans-serif; font-size: 10px; }
         table { width: 100%; border-collapse: collapse; }
@@ -1182,13 +1205,15 @@ Expected: FAIL — `Call to undefined method App\Recap\RecapExporter::toPdf()`.
     </style>
 </head>
 <body>
-    <h1>Rekap Absensi — {{ $periode }}</h1>
-    <p>Tahun ajaran: {{ $result->academicYear->name }}</p>
+    <h1>Rekap Absensi — {{ $result->period->label() }}</h1>
+    <p>Tahun ajaran: {{ $tahun?->name ?? '-' }}</p>
     @include('recap.partials.matrix', ['result' => $result])
     <p>Total hadir {{ $result->summary['hadir'] }}, izin {{ $result->summary['izin'] }}, sakit {{ $result->summary['sakit'] }}, alpa {{ $result->summary['alpa'] }}</p>
 </body>
 </html>
 ```
+
+`RecapResult` tidak punya properti `academicYear`. Tahun ajaran datang sebagai variabel terpisah `$tahun`, sama seperti view `recap/print.blade.php` dari Plan 1. Mengarang `$result->academicYear` di sini akan menghasilkan `null` diam-diam dan mencetak "Tahun ajaran: " kosong.
 `resources/views/livewire/admin-attendance-report.blade.php` — tambahkan tombol di samping "Unduh Excel":
 ```blade
             <button type="button" wire:click="exportPdf" class="rounded-md border border-zinc-900 bg-white px-3 py-2 text-sm">Unduh PDF</button>
@@ -1326,7 +1351,7 @@ Dua hal di sini merusak laporan tanpa error kalau dibiarkan: zona waktu yang sal
 <?php
 namespace Tests\Feature\Recap;
 use App\Models\User;
-use App\Recap\{RecapExporter, RecapPeriod, RecapQueries\AdminRecapQuery};
+use App\Recap\{RecapExporter, RecapPeriod, Queries\AdminRecapQuery};
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\RecapScenario;
 use Tests\TestCase;
@@ -1338,8 +1363,8 @@ class RecapConfigurationTest extends TestCase
         $s = RecapScenario::waliKelas();
         config(['rekap.file_prefix' => 'laporan-absensi']);
         $hasil = app(AdminRecapQuery::class)->for(User::factory()->admin()->create(), $s->tahun)->run(RecapPeriod::monthly(2025, 9));
-        $this->assertSame('laporan-absensi-2025-09.xlsx', (new RecapExporter($hasil))->namaBerkas('2025-09', 'xlsx'));
-        $this->assertSame('laporan-absensi-2025-09.pdf', (new RecapExporter($hasil))->namaBerkas('2025-09', 'pdf'));
+        $this->assertSame('laporan-absensi-2025-09-01-2025-09-30.xlsx', app(RecapExporter::class)->excelFilename($hasil));
+        $this->assertSame('laporan-absensi-2025-09-01-2025-09-30.pdf', app(RecapExporter::class)->pdfFilename($hasil));
     }
     public function test_zona_waktu_aplikasi_adalah_jakarta(): void
     {
@@ -1354,7 +1379,7 @@ Test kedua memeriksa `config('app.timezone')`, bukan hanya hasil akhirnya: kalau
 ```powershell
 php artisan test --filter=RecapConfigurationTest
 ```
-Expected: FAIL — `Call to undefined method App\Recap\RecapExporter::namaBerkas()` dan `config('rekap.file_prefix')` belum ada.
+Expected: FAIL — `config('rekap.file_prefix')` belum ada, jadi nama berkas masih memakai prefiks hardcoded `rekap-absensi`.
 
 - [ ] **Step 3: Tulis config dan pakai di exporter**
 
@@ -1374,16 +1399,19 @@ QUEUE_CONNECTION=sync
 ```xml
         <env name="APP_TIMEZONE" value="Asia/Jakarta"/>
 ```
-`app/Recap/RecapExporter.php` — tambahkan method ini:
+`app/Recap/RecapExporter.php` — `excelFilename()` dan `pdfFilename()` sudah ada dari Plan 1. Jangan menambah `namaBerkas()`: nama berkas harus menyebut rentang tanggal hasil, bukan slug periode, supaya arsip tidak menimpa. Cukup ganti prefiks hardcoded jadi baca dari config:
 ```php
-    public function namaBerkas(string $slug, string $ekstensi = 'xlsx'): string
+    public function excelFilename(RecapResult $result): string
     {
-        return config('rekap.file_prefix').'-'.($slug !== '' ? $slug : now()->format('Y-m')).'.'.$ekstensi;
+        return config('rekap.file_prefix').'-'.$result->period->start->format('Y-m-d')
+            .'-'.$result->period->end->format('Y-m-d').'.xlsx';
     }
-```
-Di `toPdf()` Task 6, ganti baris nama file dengan:
-```php
-        $nama = $this->namaBerkas($periode, 'pdf');
+
+    public function pdfFilename(RecapResult $result): string
+    {
+        return config('rekap.file_prefix').'-'.$result->period->start->format('Y-m-d')
+            .'-'.$result->period->end->format('Y-m-d').'.pdf';
+    }
 ```
 - [ ] **Step 4: Jalankan test, pastikan lulus**
 ```powershell
