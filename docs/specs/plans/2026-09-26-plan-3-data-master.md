@@ -3455,6 +3455,9 @@ git commit -m "feat: CRUD siswa dengan pencarian, filter, arsip, dan pemulihan"
 - Create: `app/Services/StudentImporter.php`
 - Create: `app/Livewire/StudentImport.php`
 - Create: `resources/views/livewire/student-import.blade.php`
+- Create: `tests/Support/StudentRowsSheet.php`
+- Modify: `routes/master.php` (tambah `Route::get('impor-siswa', StudentImport::class)->name('impor-siswa');`)
+- Modify: `resources/views/components/nav/data-master.blade.php` (link "Impor Siswa", `adminOnly`)
 - Test: `tests/Feature/Livewire/StudentImportTest.php`
 
 **Consumes:** `maatwebsite/excel` + `config/excel.php` (Plan 1 Task 8), `Student`, `SchoolClass`, `AcademicYear`, `StudentGender`, `StudentPolicy::create` (Plan 1 Task 4)
@@ -3470,6 +3473,12 @@ Aturan alur yang tidak boleh ditawar:
 Header yang dibaca: baris 1 sebagai judul kolom, dengan beberapa ejaan nama kolom diterima (`NISN`, `Nama`/`Nama Lengkap`, `JK`/`Jenis Kelamin`/`LP`, `Kelas`/`Class`). Nilai jenis kelamin menerima `L`/`Laki-laki`/`P`/`Perempuan` karena file dari tata usaha sering masih memakai kata, bukan huruf.
 
 Tidak ada file konfigurasi baru di task ini. `config/excel.php` sudah ada dari Plan 1 Task 8, disk temp memakai disk bawaan Laravel, dan tidak ada antrean karena `QUEUE_CONNECTION=sync`.
+
+Dua jebakan API Maatwebsite Excel v4 yang sudah terverifikasi saat task ini dikerjakan:
+
+- Konstanta reader bukan `Excel::TYPE_XLSX`, tapi `Maatwebsite\Excel\Excel::XLSX`. `Excel::import($import, $path, null, ExcelType::XLSX)` dan `Excel::raw($export, ExcelType::XLSX)`.
+- Helper test harus mengembalikan `Illuminate\Http\Testing\File`, bukan `Illuminate\Http\UploadedFile`. `Livewire\Features\SupportTesting\Testable::upload()` membaca properti publik `$file->name` yang hanya ada di `Testing\File`; `UploadedFile` biasa akan meledak dengan `Undefined property: ...::$name`. `File::createWithContent('data-siswa.xlsx', $bytes)` memberi file dengan isi xlsx asli sekaligus properti tersebut.
+- Tiap baris dari `ToCollection` adalah `Illuminate\Support\Collection`, bukan array. `(array) $baris` akan menghasilkan properti privat Collection (`items`, `escapeWhenCastingToString`) sehingga kolom kosong semua dan validasi gagal diam-diam; pakai `$baris->all()`. Judul kolom juga sudah di-slug `imports.heading_row.formatter` dari `config/excel.php`, jadi `Nama Lengkap` menjadi `nama_lengkap`.
 
 - [ ] **Step 1: Tulis test yang gagal**
 
@@ -3512,7 +3521,7 @@ use App\Models\Student;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Http\UploadedFile;
+use Illuminate\Http\Testing\File;
 use Livewire\Livewire;
 use Maatwebsite\Excel\Excel as ExcelType;
 use Maatwebsite\Excel\Facades\Excel;
@@ -3523,18 +3532,11 @@ class StudentImportTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function xlsx(array $rows): UploadedFile
+    private function xlsx(array $rows): File
     {
-        $path = tempnam(sys_get_temp_dir(), 'siswa') . '.xlsx';
-
-        file_put_contents($path, Excel::raw(new StudentRowsSheet($rows), ExcelType::TYPE_XLSX));
-
-        return new UploadedFile(
-            $path,
+        return File::createWithContent(
             'data-siswa.xlsx',
-            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            null,
-            true
+            Excel::raw(new StudentRowsSheet($rows), ExcelType::XLSX)
         );
     }
 
@@ -3718,7 +3720,7 @@ use Maatwebsite\Excel\Concerns\WithHeadingRow;
 
 final class StudentSheetReader implements ToCollection, WithHeadingRow
 {
-    /** @var array<int, array<string, mixed>> */
+    /** @var array<int, array<array-key, mixed>> */
     private array $rows = [];
 
     public function headingRow(): int
@@ -3727,17 +3729,28 @@ final class StudentSheetReader implements ToCollection, WithHeadingRow
     }
 
     /**
-     * Dipanggil sekali per chunk oleh reader Laravel Excel, jadi
-     * setiap potongan ditumpuk, bukan ditimpa.
+     * Reader Laravel Excel mengirim tiap baris sebagai `Collection`, bukan array.
+     * `(array) $baris` pada objek Collection menghasilkan properti privatnya
+     * (`items`, `escapeWhenCastingToString`), bukan pasangan kolom, jadi barisnya
+     * harus diambil lewat `all()`.
+     *
+     * Dipanggil sekali per chunk oleh reader, jadi setiap potongan ditumpuk,
+     * bukan ditimpa.
+     *
+     * @param  Collection<array-key, mixed>  $rows
      */
     public function collection(Collection $rows): void
     {
         foreach ($rows as $row) {
-            $this->rows[] = (array) $row;
+            $this->rows[] = $row instanceof Collection
+                ? $row->all()
+                : (is_array($row) ? $row : []);
         }
     }
 
-    /** @return array<int, array<string, mixed>> */
+    /**
+     * @return array<int, array<array-key, mixed>>
+     */
     public function rows(): array
     {
         return $this->rows;
@@ -3770,9 +3783,12 @@ final class StudentRowValidator
     {
         $nisnDiDatabase = Student::withTrashed()->pluck('nisn')->map(fn ($nisn) => (string) $nisn)->all();
 
-        $kelasPerNama = $kelas->mapWithKeys(
-            fn (SchoolClass $item) => [mb_strtoupper($item->name) => $item]
-        );
+        /** @var array<string, SchoolClass> $kelasPerNama */
+        $kelasPerNama = [];
+
+        foreach ($kelas as $item) {
+            $kelasPerNama[mb_strtoupper($item->name)] = $item;
+        }
 
         $hasil = [];
         $nisnDiFileIni = [];
@@ -3800,28 +3816,36 @@ final class StudentRowValidator
             }
 
             $gender = $this->gender($jk);
+            $labelJk = $jk;
 
             if ($gender === null) {
                 $galat[] = "Jenis kelamin '{$jk}' tidak dikenal. Gunakan L atau P.";
+            } else {
+                $labelJk = $gender->value;
             }
+
+            $kelasTerpilih = null;
+            $labelKelas = $namaKelas;
 
             if ($namaKelas === '') {
                 $galat[] = 'Kelas wajib diisi.';
-            }
+            } else {
+                $kelasTerpilih = $kelasPerNama[mb_strtoupper($namaKelas)] ?? null;
 
-            $kelas = $namaKelas === '' ? null : $kelasPerNama->get(mb_strtoupper($namaKelas));
-
-            if ($namaKelas !== '' && $kelas === null) {
-                $galat[] = "Kelas '{$namaKelas}' tidak ditemukan pada tahun ajaran terpilih.";
+                if ($kelasTerpilih === null) {
+                    $galat[] = "Kelas '{$namaKelas}' tidak ditemukan pada tahun ajaran terpilih.";
+                } else {
+                    $labelKelas = $kelasTerpilih->name;
+                }
             }
 
             $hasil[] = [
                 'row' => $nomor,
                 'nisn' => $nisn,
                 'nama' => $nama,
-                'gender' => $gender?->value ?? $jk,
-                'kelas' => $kelas?->name ?? $namaKelas,
-                'class_id' => $kelas?->id,
+                'gender' => $labelJk,
+                'kelas' => $labelKelas,
+                'class_id' => $kelasTerpilih?->id,
                 'valid' => $galat === [],
                 'errors' => $galat,
             ];
@@ -4018,12 +4042,20 @@ class StudentImport extends Component
             ->orderBy('name')
             ->get();
 
+        $berkas = $this->file;
+
+        if (! $berkas instanceof TemporaryUploadedFile) {
+            throw ValidationException::withMessages([
+                'file' => 'Berkas tidak terbaca. Unggah ulang.',
+            ]);
+        }
+
         $pembaca = new StudentSheetReader;
 
-        Excel::import($pembaca, $this->file->getRealPath(), 'xlsx');
+        Excel::import($pembaca, $berkas->getRealPath(), null, ExcelType::XLSX);
 
         $this->pratinjau = app(StudentRowValidator::class)->validate($pembaca->rows(), $kelas);
-        $this->namaFile = $this->file->getClientOriginalName();
+        $this->namaFile = $berkas->getClientOriginalName();
         $this->file = null;
 
         $this->resetValidation();
@@ -4187,7 +4219,7 @@ class StudentImport extends Component
 php artisan test --filter=StudentImportTest
 ```
 
-**Expected: 7 tests pass**
+**Expected: 11 tests pass** (7 test di Task 6 + 4 test tambahan: NISN kembar di dalam file yang sama, NISN siswa terarsip, ejaan kolom dan jenis kelamin berupa kata, kelas dari tahun ajaran lain). Angka 11 sudah diverifikasi dengan `php artisan test --filter=StudentImportTest` di branch `feat/plan-3-data-master`.
 
 Kalau `test_baris_tidak_valid_menampilkan_alasan_dan_tidak_menyimpan_apa_pun` gagal dengan `Student::count()` 1, `confirm()` berjalan padahal ada baris ditolak — pastikan guard `barisGagal()` ada **sebelum** `Gate::authorize` dan sebelum importer dipanggil.
 

@@ -7,6 +7,7 @@
         NavLink::adminOnly('Kelas', 'master.kelas', 'academic-cap'),
         NavLink::adminOnly('Jadwal', 'master.jadwal', 'clock'),
         NavLink::adminOnly('Siswa', 'master.siswa', 'users'),
+        NavLink::adminOnly('Impor Siswa', 'master.impor-siswa', 'arrow-up-tray'),
     ];
 
     $visible = array_filter(
