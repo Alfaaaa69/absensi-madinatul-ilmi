@@ -3,6 +3,7 @@
 
     $links = [
         NavLink::adminOnly('Tahun Ajaran', 'master.tahun-ajaran', 'calendar'),
+        NavLink::adminOnly('Mata Pelajaran', 'master.mapel', 'book-open'),
     ];
 
     $visible = array_filter(
