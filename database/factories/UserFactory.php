@@ -26,6 +26,11 @@ class UserFactory extends Factory
             'password' => 'password',
             'role' => UserRole::Guru,
             'is_active' => true,
+            // Wajib ada walau null: Auth::logout() membaca remember_token.
+            // Tanpa ini, model hasil factory() tidak punya atribut itu sehingga
+            // berbeda dari model yang dimuat dari database, dan Model::shouldBeStrict()
+            // akan meledak saat test memakai actingAs() lalu logout.
+            'remember_token' => null,
         ];
     }
 
