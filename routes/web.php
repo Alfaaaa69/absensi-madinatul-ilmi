@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\EnsureUserIsActive;
 use App\Livewire\Auth\Login;
+use App\Livewire\Dashboard;
 use App\Livewire\UserManagement;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -19,5 +20,7 @@ Route::post('/logout', function () {
 })->name('logout');
 
 Route::middleware(['auth', EnsureUserIsActive::class])->group(function () {
+    Route::get('/dashboard', Dashboard::class)->name('dashboard');
+
     Route::get('/user', UserManagement::class)->name('user.index');
 });
