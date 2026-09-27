@@ -1096,7 +1096,10 @@ php artisan test --filter=AdminAttendanceReportTest
 - Modify: `app/Livewire/AdminAttendanceReport.php` (tambah `exportPdf()`)
 - Modify: `resources/views/livewire/admin-attendance-report.blade.php` (tambah tombol PDF)
 - Create: `resources/views/recap/pdf.blade.php`
+- Read: `resources/views/recap/partials/matrix.blade.php` (dibuat di Task 1, di-`@include` oleh `recap/pdf.blade.php`)
 - Test: `tests/Feature/Recap/RecapExporterPdfTest.php`
+
+Task 6 bergantung pada Task 1 lewat partial `recap.partials.matrix`. Urutan 1 lalu 6 aman, tapi jangan Task 6 dikirim paralel dengan Task 1: `view('recap.pdf')` yang di-render `RecapExporterPdfTest` akan gagal dengan "View [recap.partials.matrix] not found" sebelum partial itu ada.
 
 `barryvdh/laravel-dompdf` **sudah terpasang** di Plan 1 Task 8 bersama `config/dompdf.php`. Plan ini tidak menambah dependency dan tidak menjalankan `composer require` lagi. PDF tetap memakai dompdf — paket PHP murni, tanpa binary eksternal yang bisa gagal di shared hosting.
 
