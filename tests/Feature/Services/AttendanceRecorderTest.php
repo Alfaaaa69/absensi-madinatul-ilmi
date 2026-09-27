@@ -182,6 +182,31 @@ class AttendanceRecorderTest extends TestCase
         $this->assertSame('Demam', Attendance::first()->note);
     }
 
+    public function test_jadwal_dari_daftar_banyak_baris_tidak_melazy_load(): void
+    {
+        $guru = User::factory()->guru()->create();
+        $jadwalPertama = Schedule::factory()->create(['teacher_id' => $guru->id]);
+        Schedule::factory()->create(['teacher_id' => $guru->id]);
+        $siswa = Student::factory()->create(['class_id' => $jadwalPertama->class_id]);
+
+        // Skema aslinya: guru memilih salah satu jadwal dari daftar hari ini, jadi
+        // modelnya berasal dari query yang mengembalikan banyak baris. Eloquent
+        // hanya mengaktifkan guard lazy loading kalau baris lebih dari satu.
+        $dariDaftar = Schedule::query()
+            ->where('teacher_id', $guru->id)
+            ->orderBy('start_time')
+            ->get()
+            ->firstWhere('id', $jadwalPertama->id);
+
+        $this->assertTrue($dariDaftar->preventsLazyLoading, 'Test ini harus lewat jalur yang sama dengan pemakaian nyata.');
+
+        $jumlah = app(AttendanceRecorder::class)->record(
+            $dariDaftar, Carbon::today(), $this->rows([$siswa->id => AttendanceStatus::Hadir]), $guru
+        );
+
+        $this->assertSame(1, $jumlah);
+    }
+
     public function test_baris_lama_menghormati_batas_edit_guru(): void
     {
         $guru = User::factory()->guru()->create();

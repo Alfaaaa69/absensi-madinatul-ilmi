@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Models\Schedule;
 use App\Models\Student;
 use App\Models\User;
 
@@ -18,7 +19,11 @@ class StudentPolicy
             return true;
         }
 
-        return $student->schoolClass->schedules()
+        // Dicocokkan lewat class_id, bukan $student->schoolClass->schedules(): pemanggil
+        // boleh mengirim siswa yang diambil dari daftar banyak baris, dan model seperti
+        // itu akan menolak lazy loading.
+        return Schedule::query()
+            ->where('class_id', $student->class_id)
             ->where('teacher_id', $user->id)
             ->exists();
     }

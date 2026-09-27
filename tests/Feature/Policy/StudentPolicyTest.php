@@ -51,6 +51,32 @@ class StudentPolicyTest extends TestCase
         $this->assertFalse(app(StudentPolicy::class)->view($guru, $siswa));
     }
 
+    public function test_view_tetap_berjalan_saat_siswa_diambil_dari_daftar_banyak_baris(): void
+    {
+        $guru = User::factory()->guru()->create();
+        $siswaDiajar = Student::factory()->create();
+        $siswaTidakDiajar = Student::factory()->create();
+
+        Schedule::factory()->create([
+            'class_id' => $siswaDiajar->class_id,
+            'teacher_id' => $guru->id,
+        ]);
+
+        // Daftar siswa untuk absensi atau rekap menghasilkan banyak baris, dan
+        // Eloquent hanya mengaktifkan guard lazy loading kalau baris lebih dari
+        // satu. Policy harus tahan terhadap kedua bentuk pemanggilan.
+        $dariDaftar = Student::query()
+            ->whereIn('id', [$siswaDiajar->id, $siswaTidakDiajar->id])
+            ->get();
+
+        $this->assertTrue($dariDaftar->first()->preventsLazyLoading, 'Test ini harus lewat jalur yang sama dengan pemakaian nyata.');
+
+        $policy = app(StudentPolicy::class);
+
+        $this->assertTrue($policy->view($guru, $dariDaftar->firstWhere('id', $siswaDiajar->id)));
+        $this->assertFalse($policy->view($guru, $dariDaftar->firstWhere('id', $siswaTidakDiajar->id)));
+    }
+
     public function test_view_any_menentukan_munculnya_menu_siswa(): void
     {
         $admin = User::factory()->admin()->create();

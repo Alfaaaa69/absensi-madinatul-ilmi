@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\AttendanceStatus;
 use App\Models\Attendance;
 use App\Models\Schedule;
+use App\Models\Student;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -28,7 +29,13 @@ final class AttendanceRecorder
     {
         Gate::forUser($actor)->authorize('recordAttendance', [$schedule, $date]);
 
-        $idsSiswa = $schedule->schoolClass->students()->pluck('id')->all();
+        // Dicek lewat class_id, bukan $schedule->schoolClass->students(): pemanggil
+        // boleh mengirim jadwal yang diambil dari daftar banyak baris, dan model
+        // seperti itu akan menolak lazy loading.
+        $idsSiswa = Student::query()
+            ->where('class_id', $schedule->class_id)
+            ->pluck('id')
+            ->all();
 
         return (int) DB::transaction(function () use ($schedule, $date, $rows, $actor, $idsSiswa) {
             $tersimpan = 0;

@@ -2432,6 +2432,8 @@ final class ScheduleManager
 
 `$schedule?->id` sebagai argumen `ignoreScheduleId` membuat edit tidak bentrok dengan dirinya sendiri. Soft delete membebaskan slot karena `ScheduleConflictDetector` memakai `Schedule::query()` yang menerapkan global scope soft delete.
 
+**Jangan baca relasi dari model yang datang dari query banyak baris.** `Model::shouldBeStrict()` di `AppServiceProvider` menyalakan guard lazy loading, tapi `Eloquent\Builder::hydrate()` hanya menerapkannya kalau `count($items) > 1`. Akibatnya kode yang salah lolos di test dengan fixture satu baris, lalu meledak 500 di aplikasi nyata yang umumnya punya banyak baris. `findConflicts()` karena itu wajib `->with(['schoolClass', 'subject'])`, dan `ScheduleManager::pesanBentrok()` boleh aman. Aturan yang sama berlaku untuk `AttendanceRecorder::record()` dan `StudentPolicy::view()`: keduanya kini memakai `class_id` langsung, bukan `$schedule->schoolClass` atau `$student->schoolClass`.
+
 `app/Livewire/ScheduleManagement.php`:
 
 ```php
