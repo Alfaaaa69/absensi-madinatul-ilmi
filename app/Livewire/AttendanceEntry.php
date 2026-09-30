@@ -80,6 +80,51 @@ class AttendanceEntry extends Component
     }
 
     /**
+     * Isi seluruh baris sekaligus. Alasan lama ikut dibersihkan karena
+     * hanya relevan selama statusnya bukan hadir — membiarkan sisa
+     * "Demam sejak kemarin" menempel pada baris yang ditandai hadir.
+     */
+    public function tandaiSemua(string $status): void
+    {
+        // Argumen action publik Livewire datang dari snapshot klien, bukan
+        // hanya dari dua nilai yang ditulis di `wire:click`. Status asing
+        // diabaikan, bukan dilempar: `from()` akan melempar \ValueError dan
+        // satu permintaan yang direkayasa membuat halaman 500. Ini bukan
+        // kontrol keamanan — simpan() memvalidasi ulang semua saat menyimpan.
+        $pilihan = AttendanceStatus::tryFrom($status);
+
+        if ($pilihan === null) {
+            return;
+        }
+
+        foreach (array_keys($this->baris) as $id) {
+            $this->status[$id] = $pilihan->value;
+        }
+
+        $this->note = [];
+    }
+
+    /**
+     * Alasan hanya relevan untuk izin, sakit, dan alpa. Saat guru
+     * mengembalikan status ke hadir, alasan lama dibuang supaya tidak
+     * ikut tersimpan sebagai sisa.
+     */
+    public function updatedStatus(mixed $value, string $key): void
+    {
+        if ($value !== AttendanceStatus::Hadir->value) {
+            return;
+        }
+
+        unset($this->note[$key]);
+    }
+
+    public function alasanTerlihat(string $studentId): bool
+    {
+        return ($this->status[$studentId] ?? AttendanceStatus::Hadir->value)
+            !== AttendanceStatus::Hadir->value;
+    }
+
+    /**
      * Tanggal terkunci. Nilai dari rute adalah satu-satunya sumber selain
      * hari ini. Bentuknya harus persis Y-m-d supaya tidak ada tanggal liar
      * yang lolos ke query — dan `hasFormat` saja tidak cukup, karena ia
