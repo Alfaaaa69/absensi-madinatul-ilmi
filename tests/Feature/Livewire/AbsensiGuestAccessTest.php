@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\Feature;
+namespace Tests\Feature\Livewire;
 
 use App\Models\Schedule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -11,11 +11,15 @@ use Tests\TestCase;
  *
  * Kenapa kelas ini terpisah dari `AbsensiRoutesTest`: test di sana sengaja
  * tidak memakai `RefreshDatabase` dan tidak memanggil route-nya, hanya membaca
- * bentuk tabel rute. Yang diuji di sini justru(route-nya **dipesan**), dan itu
+ * bentuk tabel rute. Yang diuji di sini justru route-nya **dipesan**, dan itu
  * butuh database — `absensi.create` dan `absensi.show` me-resolve `Schedule`
- * lewat route-model-binding, yang berjalan di dalam pipeline `web` **sebelum**
+ * lewat route-model binding, yang berjalan di dalam pipeline `web` **sebelum**
  * middleware `auth` dieksekusi. Kalau tabel `schedules` kosong, yang error
  * adalah `ModelNotFoundException`, bukan redirect.
+ *
+ * File ini tetap di `Livewire/` supaya berada di sebelah `AbsensiRoutesTest`:
+ * keduanya menjaga gerbang masuk yang sama, dan memisahkannya hanya karena satu
+ * perlu database adalah memisahkan yang tidak perlu dipisahkan.
  *
  * Kesenjangan yang ditutup di sini: sebelumnya akses tamu hanya "terjaga" oleh
  * assertion string di `AbsensiRoutesTest` yang memeriksa `gatherMiddleware()`

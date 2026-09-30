@@ -25,15 +25,32 @@ use Tests\TestCase;
  * dikerjakan di giliran ini. Keduanya dicatat supaya tidak dibaca sebagai hal
  * yang sudah tercakup.
  *
- * 1. **Nama route tidak dijamin unik.** `Route::has('absensi.create')` dan
- *    `getByName('absensi.create')` sama-sama membaca **pendaftaran pertama**
- *    dengan nama itu. Kalau suatu saat ada route kedua yang memakai nama yang
- *    sama — misalnya `absensi.create` dideklarasikan ulang dengan bentuk
- *    parameter berbeda — ketiga test di sini tetap hijau, sementara request
- *    kedua yang diuji akan dilayani oleh route pertama. Menjaga keunikan nama
- * berarti menghitung jumlah route per nama, dan "hitung route per nama"
- * bukan hal yang sama dengan "pastikan route ini ada": sifat assertion-nya
- * berbeda dan harus diputuskan sendiri sebelum ditulis.
+ * 1. **Nama route tidak dijamin unik, dan name lookup bisa berbeda hasilnya
+ *    dari dispatch.** Dua tabel berbeda menangani hal ini dengan aturan berbeda:
+ *
+ *    - **Name lookup: pendaftaran pertama menang.** `addLookups()` mengecek
+ *      `! $this->inNameLookup($name)` sebelum menulis
+ *      (`RouteCollection.php:105-107`), jadi `Route::has('absensi.create')`,
+ *      `getByName('absensi.create')`, dan `route('absensi.create')` semuanya
+ *      membaca **pendaftaran pertama** dengan nama itu.
+ *    - **Dispatch: pendaftaran terakhir menang.** `addToCollections()` menulis
+ *      `$this->routes[$method][$domainAndUri] = $route` **tanpa** pemeriksaan
+ *      apa pun (`RouteCollection.php:87`), jadi untuk URI yang identik, route yang
+ *      didaftarkan belakangan **menimpa** yang sebelumnya, dan request-nya
+ *      dilayani oleh yang belakangan.
+ *
+ *    Bahaya sebenarnya bukan "request kedua dilayani route pertama" — kalimat
+ *    itu terbalik arah. Bahaya sebenarnya muncul ketika satu nama dipakai lagi
+ *    dengan bentuk parameter berbeda: `route('absensi.create')` tetap
+ *    menghasilkan URL dari route yang **pertama**, sementara request ke URL itu
+ *    dilayani route yang **terakhir**. Name lookup dan dispatch bisa menunjuk
+ *    dua entri yang berbeda. Ketiga test di sini tetap hijau, karena semuanya
+ *    hanya membaca tabel dan tidak pernah mengirim request.
+ *
+ *    Menjaga keunikan nama berarti menghitung jumlah route per nama, dan
+ *    "hitung route per nama" bukan hal yang sama dengan "pastikan route ini
+ *    ada": sifat assertion-nya berbeda dan harus diputuskan sendiri sebelum
+ *    ditulis.
  *
  * 2. **Redundansi `EnsureUserIsActive` belum diputuskan.** `routes/web.php`
  *    menyebut middleware itu dua kali: sekali di grup, sekali per route. Yang

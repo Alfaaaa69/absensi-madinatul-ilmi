@@ -8,7 +8,7 @@
         @if ($baris->isEmpty())
             <div class="rounded-xl border border-dashed border-zinc-300 bg-white p-10 text-center">
                 <p class="text-base font-medium text-zinc-800">Tidak ada jadwal mengajar hari ini.</p>
-                <p class="mt-1 text-sm text-zinc-500">Cek lagi besok, atau hubungi admin bila jadwal Anda belum terdaftar.</p>
+                <p class="mt-1 text-sm text-zinc-500">Cek lagi besok. Kalau jadwal yang Anda ajar hari ini memang seharusnya ada, hubungi admin.</p>
             </div>
         @else
             <ul class="space-y-3">

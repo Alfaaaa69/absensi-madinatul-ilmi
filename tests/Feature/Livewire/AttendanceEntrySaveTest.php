@@ -189,11 +189,16 @@ class AttendanceEntrySaveTest extends TestCase
      * salah untuk pembacanya: jendela satu hari tidak berlaku sama sekali bagi
      * admin, jadi satu-satunya cara memperbaikinya saat itu juga lewat admin.
      *
-     * Yang diuji adalah kalimat yang muncul, bukan flag internalnya. Menghapus
-     * `@if ($sukses)` atau membalik cabangnya tetap menghasilkan rendered output
-     * yang sama, dan hanya assertion terhadap teks yang bisa membedakan.
+     * Yang diuji adalah kalimat yang **muncul**, bukan flag internalnya. Kalau
+     * cabangnya ditukar atau dihapus, kalimat yang dirender berubah dan test ini
+     * memerah — bukan tetap hijau. Itu sudah dibuktikan dua kali lewat mutasi,
+     * dan hasilnya tercatat di `task-7-report.md`: mengganti tanggal penentu
+     * cabang membuat dua test simpan non-hari-ini merah, dan mematikan cabang
+     * masa depan membuat test ini merah dengan kalimat "sampai jadwal ini lewat
+     * 1 hari" yang bocor ke output. Assertion terhadap teksnya adalah satu-satunya
+     * yang bisa menangkap keduanya; menebak flag-nya tidak akan.
      *
-     * Kedua cabang diuji karena hanya satu yang bisa salah diam-diam: cabang
+     * Ketiga cabang diuji karena masing-masing bisa salah diam-diam. Cabang
      * dalam jendela akan selalu hijau karena itu yang terjadi pada hampir semua
      * save, sedangkan cabang luar jendela hanya tercapai oleh admin pada
      * tanggal lama — kombinasi yang jarang tersentuh.

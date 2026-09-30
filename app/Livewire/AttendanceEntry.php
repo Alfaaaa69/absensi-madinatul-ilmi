@@ -88,11 +88,11 @@ class AttendanceEntry extends Component
         // Bukan `authorize`: halaman di luar jendela tidak lagi forbidden,
         // dia dirender sebagai halaman terkunci yang menjelaskan dirinya
         // sendiri. `Gate::authorize('recordAttendance', …)` yang dipakai di
-        // sini sebelumnya membuat guru mendapat 403 tanpa penjelasan dan
-        // dan tanpa ide siapa yang bisa membantu. Roster dan absensi yang
-        // sudah ada tetap dimuat di bawahnya; view yang tidak merendernya,
-        // supaya `mount()` tidak jadi dua pekerjaan sekaligus: memutuskan
-        // dan mengambil data.
+        // sini sebelumnya membuat guru mendapat 403 tanpa penjelasan, dan
+        // tanpa ide siapa yang bisa membantu. Roster dan absensi yang sudah
+        // ada tetap dimuat di bawahnya; view yang tidak merendernya, supaya
+        // `mount()` tidak jadi dua pekerjaan sekaligus: memutuskan dan
+        // mengambil data.
         $this->bolehUbah = Gate::allows('recordAttendance', [$this->schedule, $this->tanggal]);
 
         // Sengaja whereDate, bukan where: cast `date` menulis `Y-m-d H:i:s` untuk

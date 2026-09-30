@@ -110,11 +110,19 @@ class AttendanceEntryWindowTest extends TestCase
      * jadwal, jadi "form tidak dirender" belum otomatis berarti "nama siswa
      * tidak bocor ke HTML".
      *
-     * Yang dilindungi di sini adalah halaman terkunci untuk guru yang jadwalnya
-     * bukan milikmu. Kalau nama siswa ikut bocor, guru bisa membaca siapa yang
-     * absen pada jadwal yang sedang dikunci, padahal dia tidak boleh
-     * menyentuhnya sama sekali — itu kebocoran data lintas kelas, bukan sekadar
-     * tampilan.
+     * Skenarionya: guru yang **memiliki** jadwalnya sendiri, membuka lembar untuk
+     * tanggal 3 hari lalu, jadi halaman terkunci karena jendela tanggalnya sudah
+     * lewat — bukan karena wewenang. `jadwalMilik($guru)` membuat jadwal dengan
+     * `teacher_id` guru itu, dan `Gate::allows('recordAttendance', …)` menolak
+     * tanggalnya, bukan kepemilikannya. Yang diuji di sini murni sisi render dari
+     * keadaan "guru berwenang, tapi tanggalnya di luar jendela".
+     *
+     * Kenapa itu penting: `mount()` memuat roster dari kelas jadwal **sebelum**
+     * `$bolehUbah` dihitung, jadi "form tidak dirender" belum otomatis berarti
+     * "nama siswa tidak bocor ke HTML". Kalau nama ikut bocor, guru membaca siapa
+     * yang absen pada lembar yang sedang dikunci — untuk jadwal yang memang
+     * miliknya, jadi ini kebocoran data terhadap keadaan halaman, bukan kebocoran
+     * lintas kelas seperti yang tertulis di versi komentar sebelumnya.
      *
      * Nama diambil dari database, bukan ditulis literal, supaya test ini tetap
      * benar meski `StudentFactory` diganti sumber namanya.
