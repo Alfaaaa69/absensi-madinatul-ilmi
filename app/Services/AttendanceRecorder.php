@@ -23,7 +23,14 @@ final class AttendanceRecorder
      * AttendancePolicy::update. Kalau aturan berubah, hanya Policy yang
      * disentuh.
      *
-     * @param  Collection<int, array{student_id: string, status: AttendanceStatus|string, note?: string|null}>  $rows
+     * Setiap baris diharapkan berisi `student_id`, `status` (string atau
+     * `AttendanceStatus`), dan `note` yang boleh tidak ada. Bentuknya tidak
+     * bisa ditulis sebagai `@param` yang sempit: `Collection` bersifat
+     * invarian, jadi tipe baris harus sama persis dengan tipe pemanggil,
+     * dan tidak ada tipe yang bisa diturunkan dari kode nyata mana pun —
+     * `status` bisa string atau enum, `note` bisa ada atau tidak.
+     *
+     * @param  Collection<int, mixed>  $rows
      */
     public function record(Schedule $schedule, Carbon $date, Collection $rows, User $actor): int
     {

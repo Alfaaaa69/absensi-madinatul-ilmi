@@ -109,19 +109,6 @@ class AttendanceEntrySaveTest extends TestCase
         $this->assertSame($admin->id, $baris->updated_by);
     }
 
-    public function test_guru_ditolak_untuk_tanggal_di_luar_jendela(): void
-    {
-        $guru = User::factory()->guru()->create();
-        $jadwal = Schedule::factory()->create(['teacher_id' => $guru->id]);
-        $this->kelasDenganSiswa(2);
-        $this->actingAs($guru);
-
-        $this->get(route('absensi.show', [$jadwal, today()->subDays(5)->toDateString()]))
-            ->assertForbidden();
-
-        $this->assertSame(0, Attendance::count());
-    }
-
     public function test_admin_boleh_menyimpan_tanggal_lampau(): void
     {
         $admin = User::factory()->admin()->create();
@@ -142,6 +129,13 @@ class AttendanceEntrySaveTest extends TestCase
         $this->assertSame(2, $ids->count());
     }
 
+    /**
+     * Baris asing tidak pernah sampai ke `AttendanceRecorder` lewat form:
+     * `pastikanBarisLengkap()` menolak lebih dulu karena kunci yang dikirim
+     * tidak sama dengan roster yang dimuat `mount()`. Penjaga keanggotaan
+     * kelas milik service tetap ada sebagai lapisan kedua dan diuji langsung
+     * di `AttendanceRecorderTest::test_siswa_dari_kelas_lain_ditolak`.
+     */
     public function test_siswa_dari_kelas_lain_ditolak(): void
     {
         $guru = User::factory()->guru()->create();
@@ -162,6 +156,14 @@ class AttendanceEntrySaveTest extends TestCase
         $this->assertSame(2, $ids->count());
     }
 
+    /**
+     * Karena `pastikanBarisLengkap()` menolak batch yang tidak menutup
+     * roster, test ini kini membuktikan form menolak sebelum apa pun ditulis
+     * — bukan lagi rollback transaksinya. Bukti rollback yang sebenarnya ada
+     * di `AttendanceRecorderTest::test_kegagalan_satu_siswa_membatalkan_seluruh_batch`,
+     * yang memanggil service langsung dan memeriksa `Attendance::count()`
+     * tetap nol setelah baris pertama sempat ditulis.
+     */
     public function test_satu_baris_gagal_membatalkan_seluruh_batch(): void
     {
         $guru = User::factory()->guru()->create();
@@ -185,6 +187,66 @@ class AttendanceEntrySaveTest extends TestCase
         $this->assertSame(0, Attendance::count());
         $this->assertDatabaseMissing('attendances', ['student_id' => $ids->first()]);
         $this->assertDatabaseMissing('attendances', ['student_id' => $ids->last()]);
+    }
+
+    /**
+     * Absensi parsial berarti siswa yang tidak terkirim tidak punya catatan
+     * sama sekali, padahal guru tetap melihat "Absensi tersimpan". Pemulihan
+     * di halaman berikutnya bukan perbaikan netral: `mount()` mengisi baris
+     * tanpa data dengan `hadir`, jadi pada simpanan guru berikutnya siswa
+     * yang berlubang berubah diam-diam dari "tidak tercatat" menjadi "hadir",
+     * dan rekap menghitungnya hadir. Karena itu batch harus menutup seluruh
+     * roster sebelum service dipanggil, dan tidak boleh ada satu baris pun
+     * yang tertulis — termasuk baris siswa yang memang dikirim.
+     */
+    public function test_siswa_yang_tidak_dikirim_menolak_simpan_sepenuhnya(): void
+    {
+        $guru = User::factory()->guru()->create();
+        [$kelas, $ids] = $this->kelasDenganSiswa(2);
+        $jadwal = Schedule::factory()->create([
+            'teacher_id' => $guru->id,
+            'class_id' => $kelas->id,
+        ]);
+        $this->actingAs($guru);
+
+        Livewire::test(AttendanceEntry::class, ['schedule' => $jadwal])
+            ->set('status', [$ids->first() => 'hadir'])
+            ->call('simpan')
+            ->assertHasErrors('form')
+            ->assertSee('Daftar siswa di form ini tidak lengkap.')
+            ->assertSet('sukses', false);
+
+        $this->assertSame(0, Attendance::count());
+        $this->assertDatabaseMissing('attendances', ['student_id' => $ids->first()]);
+    }
+
+    /**
+     * `record()` mengotorisasi setiap panggilan di dalam service, jadi guru
+     * yang menggeser `tanggal` ke lima hari lalu lalu memanggil `simpan()`
+     * mendarat di catch `AuthorizationException` dan berakhir sebagai pesan
+     * `form` — bukan 403, bukan \TypeError, dan tidak ada yang tertulis.
+     * Jalur ini sudah tertutup sejak Plan 1; yang dipindahkan di Task 6 hanya
+     * posisi gate tanggalnya, bukan lubiknya.
+     */
+    public function test_guru_menolak_tanggal_di_luar_jendela_saat_menyimpan(): void
+    {
+        $guru = User::factory()->guru()->create();
+        [$kelas, $ids] = $this->kelasDenganSiswa(2);
+        $jadwal = Schedule::factory()->create([
+            'teacher_id' => $guru->id,
+            'class_id' => $kelas->id,
+        ]);
+        $this->actingAs($guru);
+
+        Livewire::test(AttendanceEntry::class, ['schedule' => $jadwal])
+            ->set('tanggal', today()->subDays(5))
+            ->call('simpan')
+            ->assertHasErrors('form')
+            ->assertSee('Kamu tidak berwenang mengisi absensi jadwal ini. Hubungi admin.')
+            ->assertSet('sukses', false);
+
+        $this->assertSame(0, Attendance::count());
+        $this->assertDatabaseMissing('attendances', ['student_id' => $ids->first()]);
     }
 
     public function test_alasan_dibersihkan_saat_status_kembali_hadir(): void

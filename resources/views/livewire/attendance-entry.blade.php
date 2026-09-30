@@ -20,9 +20,9 @@
             </div>
         @endif
 
-        @if ($errors->has('form'))
+        @if ($errors->any())
             <div class="rounded-xl border border-red-300 bg-red-50 p-4">
-                <p class="text-sm font-semibold text-red-800">{{ $errors->first('form') }}</p>
+                <p class="text-sm font-semibold text-red-800">{{ $errors->has('form') ? $errors->first('form') : 'Ada isian yang belum benar. Periksa kembali form di bawah.' }}</p>
                 @foreach ($errors->getMessages() as $kunci => $daftar)
                     @if ($kunci === 'form')
                         @continue

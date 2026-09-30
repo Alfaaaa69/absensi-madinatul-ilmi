@@ -157,7 +157,7 @@ class AttendanceEntry extends Component
      *
      * @return array<string, mixed>
      */
-    public function rules(): array
+    protected function rules(): array
     {
         return [
             'status' => ['required', 'array'],
@@ -170,7 +170,7 @@ class AttendanceEntry extends Component
     /**
      * @return array<string, string>
      */
-    public function messages(): array
+    protected function messages(): array
     {
         return [
             'status.required' => 'Status kehadiran wajib diisi.',
@@ -190,27 +190,19 @@ class AttendanceEntry extends Component
      * `Gate::authorize` sendiri — aturan yang diulang di dua tempat bisa
      * berbeda, dan yang dilupakan biasanya yang kedua.
      *
-     * Baris disusun dari persis `$status` yang dikirim, tanpa penyaringan
-     * roster. Keanggotaan kelas adalah urusan `AttendanceRecorder` yang
-     * memuat roster sungguhan dari `class_id`, jadi daftar siswa tidak
-     * pernah dihitung di sini: penjaga yang diulang di dua tempat bisa
-     * melenceng, dan yang melenceng biasanya yang tidak diuji.
+     * Baris disusun dari persis `$status` yang dikirim. Keanggotaan kelas
+     * tetap urusan `AttendanceRecorder` yang memuat roster sungguhan dari
+     * `class_id`; yang diperiksa form hanya kelengkapan barisnya sendiri,
+     * lewat `$baris` yang sudah dimuat `mount()`.
      */
     public function simpan(): void
     {
+        $this->sukses = false;
+
         $this->validate();
 
-        /**
-         * Bentuk di bawah menyatakan kontrak yang diterima `record()`, bukan
-         * tebakan isi array: `Collection` bersifat invarian, sehingga bentuk
-         * yang lebih longgar dari kontrak itu ditolak analisis statis —
-         * dan kontrak `record()` sendiri tidak bisa diturunkan dari
-         * inferensi, karena `status` selalu string dari snapshot dan
-         * `note` selalu ada. Status diteruskan apa adanya; `record()` yang
-         * memvalidasi ulang lewat `AttendanceStatus::from()`.
-         *
-         * @var Collection<int, array{student_id: string, status: AttendanceStatus|string, note?: string|null}>
-         */
+        $this->pastikanBarisLengkap();
+
         $rows = new Collection(collect(array_keys($this->status))->map(fn (string $id) => [
             'student_id' => $id,
             'status' => $this->status[$id],
@@ -236,6 +228,40 @@ class AttendanceEntry extends Component
 
         $this->sudahDisimpan = true;
         $this->sukses = true;
+    }
+
+    /**
+     * Batch harus menutup seluruh baris form, bukan sebagian saja.
+     * `mount()` sudah memuat roster ke `$this->baris`, jadi pemeriksaan ini
+     * tidak query ulang dan tidak mengulang penjaga keanggotaan kelas milik
+     * `AttendanceRecorder`.
+     *
+     * Tanpa pemeriksaan ini, request yang menyisakan satu siswa menulis
+     * lembar absensi parsial sambil tetap menampilkan "Absensi tersimpan".
+     * Pemulihan di halaman berikutnya bukan perbaikan netral: `mount()`
+     * mengisi baris tanpa data dengan `hadir`, jadi pada simpanan guru
+     * berikutnya siswa yang berlubang berubah diam-diam dari "tidak
+     * tercatat" menjadi "hadir" — dan rekap menghitungnya hadir.
+     *
+     * Kunci kedua array dinormalisasi ke string lalu diurutkan supaya beda
+     * tipe kunci (int dari JSON atau string dari mount) dan urutan pengiriman
+     * tidak salah dibaca sebagai roster yang berbeda.
+     */
+    private function pastikanBarisLengkap(): void
+    {
+        $terkirim = array_map('strval', array_keys($this->status));
+        $roster = array_map('strval', array_keys($this->baris));
+
+        sort($terkirim);
+        sort($roster);
+
+        if ($terkirim === $roster) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'form' => 'Daftar siswa di form ini tidak lengkap. Muat ulang halaman lalu isi absensi dari awal.',
+        ]);
     }
 
     /**
