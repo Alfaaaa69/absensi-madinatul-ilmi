@@ -14,6 +14,26 @@
             <p class="mt-1 text-lg font-semibold text-zinc-900">{{ \App\Support\IndonesianDate::tanggal($tanggal) }}</p>
         </div>
 
+        @if ($sukses)
+            <div class="rounded-xl border border-emerald-300 bg-emerald-50 p-4 text-sm font-medium text-emerald-800">
+                Absensi tersimpan. Status siswa bisa diubah lagi selama jadwal hari ini atau kemarin masih dibuka.
+            </div>
+        @endif
+
+        @if ($errors->has('form'))
+            <div class="rounded-xl border border-red-300 bg-red-50 p-4">
+                <p class="text-sm font-semibold text-red-800">{{ $errors->first('form') }}</p>
+                @foreach ($errors->getMessages() as $kunci => $daftar)
+                    @if ($kunci === 'form')
+                        @continue
+                    @endif
+                    @foreach ($daftar as $pesan)
+                        <p class="mt-1 text-sm text-red-700">{{ $pesan }}</p>
+                    @endforeach
+                @endforeach
+            </div>
+        @endif
+
         <div class="flex flex-wrap gap-2">
             <button type="button" wire:click="tandaiSemua('hadir')"
                     class="rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50">
@@ -48,6 +68,9 @@
                                         <option value="{{ $opsi->value }}" @selected($opsi->value === ($status[$id] ?? null))>{{ ucfirst($opsi->value) }}</option>
                                     @endforeach
                                 </select>
+                                @error("status.{{ $id }}")
+                                    <p class="mt-1 text-xs text-red-700">{{ $message }}</p>
+                                @enderror
                             </td>
                             <td class="px-4 py-3">
                                 @if ($this->alasanTerlihat($id))
