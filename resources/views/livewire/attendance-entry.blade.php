@@ -4,9 +4,9 @@
             <p class="text-sm font-medium text-zinc-500">
                 {{ $schedule->subject->name }} - Kelas {{ $schedule->schoolClass->name }}
             </p>
-            <p class="mt-1 text-4xl font-bold tracking-tight text-zinc-900">
+            <h1 class="mt-1 text-4xl font-bold tracking-tight text-zinc-900">
                 {{ \App\Support\IndonesianDate::jam($schedule->start_time) }} - {{ \App\Support\IndonesianDate::jam($schedule->end_time) }}
-            </p>
+            </h1>
         </div>
 
         <div class="rounded-xl border border-zinc-200 bg-zinc-50 p-4">
@@ -33,7 +33,7 @@
                                 <select wire:model.live="status.{{ $id }}"
                                         class="rounded-lg border-zinc-300 text-sm text-zinc-900">
                                     @foreach (\App\Enums\AttendanceStatus::cases() as $opsi)
-                                        <option value="{{ $opsi->value }}">{{ ucfirst($opsi->value) }}</option>
+                                        <option value="{{ $opsi->value }}" @selected($opsi->value === ($status[$id] ?? null))>{{ ucfirst($opsi->value) }}</option>
                                     @endforeach
                                 </select>
                             </td>

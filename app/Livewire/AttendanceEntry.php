@@ -51,6 +51,10 @@ class AttendanceEntry extends Component
         Gate::authorize('view', $this->schedule);
         Gate::authorize('recordAttendance', [$this->schedule, $this->tanggal]);
 
+        // Sengaja whereDate, bukan where: cast `date` menulis `Y-m-d H:i:s` untuk
+        // setiap nilai, sehingga kolom ini menyimpan jam 00:00:00 juga di SQLite.
+        // MySQL memotongnya jadi DATE, tapi SQLite tidak — `where('date', 'Y-m-d')`
+        // akan hijau di produksi dan merah di test.whereDate aman di keduanya.
         $tersimpan = Attendance::query()
             ->where('schedule_id', $this->schedule->id)
             ->whereDate('date', $this->tanggal->toDateString())
@@ -77,8 +81,11 @@ class AttendanceEntry extends Component
 
     /**
      * Tanggal terkunci. Nilai dari rute adalah satu-satunya sumber selain
-     * hari ini, dan bentuknya harus persis Y-m-d supaya tidak ada tanggal
-     * liar yang lolos ke query.
+     * hari ini. Bentuknya harus persis Y-m-d supaya tidak ada tanggal liar
+     * yang lolos ke query — dan `hasFormat` saja tidak cukup, karena ia
+     * hanya mengecek bentuk: `2026-02-30` lolos lalu `Carbon::parse`
+     * melanjutkannya ke 2 Maret tanpa error. Karena itu tanggal hasil parse
+     * harus masih sama persis dengan masukannya, kalau tidak 404.
      */
     private function tanggalDari(?string $tanggal): Carbon
     {
@@ -90,7 +97,13 @@ class AttendanceEntry extends Component
             abort(404);
         }
 
-        return Carbon::parse($tanggal, 'Asia/Jakarta')->startOfDay();
+        $parsed = Carbon::parse($tanggal, 'Asia/Jakarta')->startOfDay();
+
+        if ($parsed->toDateString() !== $tanggal) {
+            abort(404);
+        }
+
+        return $parsed;
     }
 
     public function render(): View

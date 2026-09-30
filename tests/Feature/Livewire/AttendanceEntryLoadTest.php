@@ -8,6 +8,7 @@ use App\Models\Attendance;
 use App\Models\Schedule;
 use App\Models\Student;
 use App\Models\User;
+use App\Support\IndonesianDate;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Livewire\Livewire;
@@ -85,6 +86,38 @@ class AttendanceEntryLoadTest extends TestCase
             ->assertSee('Kelas '.$jadwal->schoolClass->name);
     }
 
+    /**
+     * mount() mencocokkan parameter rute berdasarkan nama. Kalau nama parameter
+     * berubah, tanggal yang diminta datang sebagai null dan halaman diam-diam
+     * menampilkan hari ini — lebih buruk lagi, `recordAttendance` ikut mengetatkan
+     * jadwal ke hari ini sehingga jendela rekam absensi ikut terbalik. Karena itu
+     * diuji lewat rute sungguhan dengan tanggal yang benar-benar berbeda dari
+     * hari ini: `assertOk()` saja lolos pada apa pun yang jatuh ke fallback.
+     */
+    public function test_tanggal_dari_rute_sampai_ke_halaman(): void
+    {
+        [, $jadwal] = $this->jadwalDenganSiswa();
+        $tanggalDiminta = today()->subDay();
+
+        $this->get(route('absensi.show', [$jadwal, $tanggalDiminta->toDateString()]))
+            ->assertOk()
+            ->assertSee(IndonesianDate::tanggal($tanggalDiminta))
+            ->assertDontSee(IndonesianDate::tanggal(today()));
+    }
+
+    /**
+     * `hasFormat('Y-m-d')` hanya mengecek bentuk, bukan kalender: `2026-02-30`
+     * lolos lalu digulirkan `Carbon::parse` menjadi 2 Maret tanpa error. Dua
+     *-duanya harus 404 supaya tidak ada tanggal liar yang sampai ke query absensi.
+     */
+    public function test_tanggal_liar_dari_rute_menghasilkan_404(): void
+    {
+        [, $jadwal] = $this->jadwalDenganSiswa();
+
+        $this->get(route('absensi.show', [$jadwal, 'bukan-tanggal']))->assertNotFound();
+        $this->get(route('absensi.show', [$jadwal, '2026-02-30']))->assertNotFound();
+    }
+
     public function test_semua_siswa_default_hadir_dan_terurut_nama(): void
     {
         [, $jadwal] = $this->jadwalDenganSiswa();
@@ -120,7 +153,8 @@ class AttendanceEntryLoadTest extends TestCase
             ->assertOk()
             ->assertSet('sudahDisimpan', true)
             ->assertSet('status.'.$siswa->id, 'sakit')
-            ->assertSet('note.'.$siswa->id, 'Demam sejak pagi');
+            ->assertSet('note.'.$siswa->id, 'Demam sejak pagi')
+            ->assertSee('value="sakit" selected', false);
     }
 
     public function test_tombol_menjadi_simpan_perubahan_setelah_absensi_ada(): void
