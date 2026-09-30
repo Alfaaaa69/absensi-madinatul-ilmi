@@ -32,7 +32,7 @@ Route::middleware(['auth', EnsureUserIsActive::class])->group(function () {
         ->middleware(EnsureUserIsActive::class)
         ->name('absensi.create');
 
-    Route::get('/absensi/{schedule}/{tanggal}', AttendanceEntry::class)
+    Route::get('/absensi/{schedule}/{tanggal_absensi}', AttendanceEntry::class)
         ->middleware(EnsureUserIsActive::class)
         ->name('absensi.show');
 

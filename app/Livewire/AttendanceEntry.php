@@ -18,10 +18,10 @@ class AttendanceEntry extends Component
 
     public Carbon $tanggal;
 
-    public function mount(Schedule $schedule, ?string $tanggal = null): void
+    public function mount(Schedule $schedule, ?string $tanggal_absensi = null): void
     {
         $this->schedule = $schedule;
-        $this->tanggal = $this->tanggalDari($tanggal);
+        $this->tanggal = $this->tanggalDari($tanggal_absensi);
 
         Gate::authorize('view', $this->schedule);
         Gate::authorize('recordAttendance', [$this->schedule, $this->tanggal]);

@@ -150,4 +150,23 @@ class TodayScheduleTest extends TestCase
             ->assertSee('Sabtu, 26 September 2026')
             ->assertSee('Tidak ada jadwal mengajar hari ini.');
     }
+
+    /**
+     * `absensi.show` pernah 500 di setiap request: ImplicitRouteBinding
+     * memotong nama parameter rute dengan nama properti publik bertipe
+     * Carbon, lalu memanggil resolveRouteBinding() pada Carbon. Rute harus
+     * benar-benar didispatch supaya guard ini menangkapnya kembali —
+     * PHPStan dan Pint tidak akan.
+     */
+    public function test_rute_absensi_dengan_tanggal_tidak_menghasilkan_error_server(): void
+    {
+        $guru = $this->masukSebagaiGuru();
+        $jadwal = Schedule::factory()->create([
+            'teacher_id' => $guru->id,
+            'day_of_week' => DayOfWeek::Senin,
+        ]);
+
+        $this->get(route('absensi.show', [$jadwal, today()->toDateString()]))
+            ->assertOk();
+    }
 }
