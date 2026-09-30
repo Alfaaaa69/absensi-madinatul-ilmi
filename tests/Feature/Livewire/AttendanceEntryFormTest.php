@@ -47,12 +47,22 @@ class AttendanceEntryFormTest extends TestCase
         return [$jadwal, Student::query()->where('class_id', $jadwal->class_id)->pluck('id')];
     }
 
-    public function test_tandai_semua_hadir_mengisi_seluruh_baris(): void
+    /**
+     * Namanya dulu menyebut "hadir" padahal act pertama menandai `izin`, jadi
+     * sekarang keduanya disebut. Tombol massal ikut diuji di sini lewat isi
+     * atribut `wire:click`, bukan teks labelnya: sejak `tandaiSemua` memakai
+     * `tryFrom`, argumen yang salah ketik di blade tidak lagi melempar
+     * \ValueError saat guru mengeklik, melainkan diam-diam tidak terjadi apa
+     * apa. Tanpa assertion ini, `wire:click="tandaiSemua('Hadir')"` lolos ke
+     * produksi dengan tombol yang tampil tapi mati, tanpa satu test pun merah.
+     */
+    public function test_tandai_semua_mengisi_seluruh_baris_dan_membuang_alasan_lama(): void
     {
         [$jadwal, $ids] = $this->formSiap();
         $pertama = $ids->first();
 
         $component = Livewire::test(AttendanceEntry::class, ['schedule' => $jadwal])
+            ->assertSeeHtml("tandaiSemua('hadir')")
             ->set('note.'.$pertama, 'Demam sejak kemarin')
             ->call('tandaiSemua', 'izin')
             ->assertSet('note.'.$pertama, null);
@@ -79,6 +89,7 @@ class AttendanceEntryFormTest extends TestCase
         [$jadwal, $ids] = $this->formSiap();
 
         $component = Livewire::test(AttendanceEntry::class, ['schedule' => $jadwal])
+            ->assertSeeHtml("tandaiSemua('alpa')")
             ->call('tandaiSemua', 'alpa');
 
         foreach ($ids as $id) {
