@@ -65,13 +65,23 @@ class AttendanceEntryAccessTest extends TestCase
         $this->get(route('absensi.create', $jadwalLain))->assertForbidden();
     }
 
+    /**
+     * Dulu halaman ini 403. Sekarang guru yang membuka tanggal terlalu lama
+     * tetap melihat halaman — dengan kalimat yang bilang apa yang terjadi dan
+     * siapa yang bisa membantu. Status 200 di sini bukan longgarnya aturan:
+     * `SchedulePolicy::recordAttendance` tetap menolak, dan `simpan()` masih
+     * menolak di detik yang sama seperti yang dibuktikan di
+     * `AttendanceEntryWindowTest`.
+     */
     public function test_guru_tidak_bisa_membuka_tanggal_di_luar_jendela(): void
     {
         $guru = $this->masukSebagaiGuru();
         $jadwal = Schedule::factory()->create(['teacher_id' => $guru->id]);
 
         $this->get(route('absensi.show', [$jadwal, today()->subDays(3)->toDateString()]))
-            ->assertForbidden();
+            ->assertOk()
+            ->assertSee('Absensi ini sudah lewat 1 hari. Hubungi admin.')
+            ->assertDontSee('Simpan Absensi');
     }
 
     /**

@@ -158,7 +158,7 @@ class AttendanceEntrySaveTest extends TestCase
     }
 
     /**
-     * Rollback yang terbukti di sini bukan "tidak ada yang tried menulis",
+     * Rollback yang terbukti di sini bukan "tidak ada yang sempat ditulis",
      * melainkan "satu baris sempat ditulis lalu dibatalkan".
      *
      * `pastikanBarisLengkap()` membandingkan kunci `status` dengan `baris`
@@ -173,6 +173,17 @@ class AttendanceEntrySaveTest extends TestCase
      * pertama benar-benar lebih dulu masuk ke transaksi. Kalau tidak begitu,
      * `Attendance::count() === 0` hanya membuktikan tidak ada yang sempat
      * ditulis, bukan bahwa rollback bekerja.
+     *
+     * Syarat "paling akhir" itu adalah ketergantungan urutan yang tidak
+     * terlihat dari test ini: form diurutkan oleh `mount()` lewat
+     * `orderBy('name')`, dan `barisAbsensi()` lalu iterate
+     * `array_keys($this->status)`, yang terisi dari loop yang sama. Keduanya
+     * masih seurut selama
+     * `mount()` mengisi `$baris` dan `$status` dalam satu loop; kalau itu
+     * berubah, `Attendance::count() === 0` akan pelan-pelan berubah artinya
+     * menjadi "tidak ada yang ditulis" — bacaan yang justru paling ingin
+     * dihindari — dan test ini tetap hijau. Karena itu urutan itu diperiksa
+     * langsung di bawah, bukan cuma diasumsikan.
      */
     public function test_satu_baris_gagal_membatalkan_seluruh_batch(): void
     {
@@ -190,6 +201,15 @@ class AttendanceEntrySaveTest extends TestCase
         $urutan = array_keys($component->get('baris'));
         $terulisDulu = $urutan[0];
         $pindah = $urutan[1];
+
+        // Yang dijaga di sini bukan hanya "sisanya ditolak", tapi bahwa yang
+        // ditolak adalah baris paling akhir. Kalau urutannya berubah, baris
+        // pertama yang gagal dan test ini mulai hijau tanpa memeriksa apa pun.
+        $this->assertSame(
+            array_keys($component->get('status')),
+            $urutan,
+            'Urutan baris form dan status harus sama; test ini bergantung pada itu.',
+        );
 
         Student::query()->whereKey($pindah)->update(['class_id' => $kelasLain->id]);
 
@@ -235,34 +255,20 @@ class AttendanceEntrySaveTest extends TestCase
         $this->assertDatabaseMissing('attendances', ['student_id' => $ids->first()]);
     }
 
-    /**
-     * `record()` mengotorisasi setiap panggilan di dalam service, jadi guru
-     * yang menggeser `tanggal` ke lima hari lalu lalu memanggil `simpan()`
-     * mendarat di catch `AuthorizationException` dan berakhir sebagai pesan
-     * `form` — bukan 403, bukan \TypeError, dan tidak ada yang tertulis.
-     * Jalur ini sudah tertutup sejak Plan 1; yang dipindahkan di Task 6 hanya
-     * posisi gate tanggalnya, bukan lubiknya.
-     */
-    public function test_guru_menolak_tanggal_di_luar_jendela_saat_menyimpan(): void
-    {
-        $guru = User::factory()->guru()->create();
-        [$kelas, $ids] = $this->kelasDenganSiswa(2);
-        $jadwal = Schedule::factory()->create([
-            'teacher_id' => $guru->id,
-            'class_id' => $kelas->id,
-        ]);
-        $this->actingAs($guru);
-
-        Livewire::test(AttendanceEntry::class, ['schedule' => $jadwal])
-            ->set('tanggal', today()->subDays(5))
-            ->call('simpan')
-            ->assertHasErrors('form')
-            ->assertSee('Kamu tidak berwenang mengisi absensi jadwal ini. Hubungi admin.')
-            ->assertSet('sukses', false);
-
-        $this->assertSame(0, Attendance::count());
-        $this->assertDatabaseMissing('attendances', ['student_id' => $ids->first()]);
-    }
+    // `test_guru_menolak_tanggal_di_luar_jendela_saat_menyimpan` dihapus di
+    // Task 6. Test itu memalsukan `tanggal` lewat snapshot klien, persis yang
+    // `#[Locked]` sekarang larang, jadi ia mendokumentasikan celah yang sudah
+    // tidak ada. Hasil yang dilihat guru dari kasus itu — pesan `form`
+    // berbahasa manusia dan tidak ada yang tertulis — sekarang dibuktikan di
+    // `AttendanceEntryWindowTest::test_simpan_di_halaman_terkunci_menolak_dengan_pesan_jendela`.
+    //
+    // Konsekuensi yang perlu diketahui: catch `AuthorizationException` di
+    // `simpan()` tidak lagi punya test di level component. `simpan()` memanggil
+    // `Gate::allows('recordAttendance', …)` dengan policy yang sama sebelum
+    // menyentuh `record()`, jadi `record()` hanya menolak lewat
+    // `AuthorizationException` kalau jam bergerak di antara dua pemanggilan itu.
+    // Cabangnya tetap dipertahankan sebagai lapisan kedua, tapi tidak lagi
+    // bisa direproduksi dari test.
 
     /**
      * Lampu hijau harus menggambarkan keadaan simpanan terakhir, bukan

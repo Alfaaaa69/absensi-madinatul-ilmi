@@ -28,9 +28,16 @@ final class AttendanceRecorder
      * tidak bisa ditulis sebagai `@param` yang sempit: `Collection` bersifat
      * invarian, jadi tipe baris harus sama persis dengan tipe yang dilaporkan
      * pemanggil. Karena itu pemanggil melaporkan barisnya sebagai
-     * `list<array<string, mixed>>` — posisi return bersifat covariance, jadi
-     * bentuk `array{student_id: …}` yang sebenarnya dibangun tetap diperiksa
-     * di sisi pemanggil, sementara di sini isinya tidak diabaikan.
+     * `list<array<string, mixed>>` — posisi return bersifat covariance.
+     *
+     * Yang ditegakkan anotasi ini hanya itu: `$rows` adalah list of
+     * string-keyed array. Keberadaan ketiga kunci di atas tidak diperiksa.
+     * `phpstan.neon` ada di level 7 dengan `checkExplicitMixed` mati, jadi
+     * ketiga pembacaan `$row['student_id']`, `$row['status']`, dan
+     * `$row['note']` di bawah berjalan pada `mixed` tanpa penjaga. Kalau
+     * pemanggilnya berubah, memindahkan kunci-kunci itu ke docblock
+     * `AttendanceEntry::barisAbsensi()` adalah satu-satunya tempat yang
+     * menjelaskannya.
      *
      * @param  Collection<int, array<string, mixed>>  $rows
      */

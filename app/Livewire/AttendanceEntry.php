@@ -2,6 +2,7 @@
 
 namespace App\Livewire;
 
+use App\Attendance\Queries\AdminContactsQuery;
 use App\Enums\AttendanceStatus;
 use App\Models\Attendance;
 use App\Models\Schedule;
@@ -14,6 +15,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
@@ -23,7 +25,27 @@ class AttendanceEntry extends Component
 {
     public Schedule $schedule;
 
+    /**
+     * Tanggal ini datang dari URL, dan URL tidak boleh bisa diubah
+     * diam-diam dari snapshot klien. Tanpa `#[Locked]`, guru yang sedang
+     * di halaman terkunci bisa mengirim `tanggal` berisi hari ini dan
+     * mendapat baris `attendances` yang tanggalnya bertentangan dengan
+     * halaman asalnya. Itu merusak audit trail tanpa memberi tanda. Aturan
+     * jendela juga diturunkan dari nilai ini, jadi memalsainya berarti
+     * `Gate::allows()` memeriksa tanggal yang salah.
+     */
+    #[Locked]
     public Carbon $tanggal;
+
+    /**
+     * Penanda apakah tanggal ini masih di dalam jendela edit. Ini hanya
+     * untuk merender: apa yang ditampilkan view ditentukan flag ini, tapi
+     * aturan jendela sendirinya dievaluasi ulang di `simpan()` lewat
+     * `Gate::allows` — bukan dibaca dari sini, karena flag ini publik dan
+     * bisa dikirim balik oleh klien.
+     */
+    #[Locked]
+    public bool $bolehUbah = false;
 
     public bool $sudahDisimpan = false;
 
@@ -62,7 +84,16 @@ class AttendanceEntry extends Component
         $this->tanggal = $this->tanggalDari($tanggal_absensi);
 
         Gate::authorize('view', $this->schedule);
-        Gate::authorize('recordAttendance', [$this->schedule, $this->tanggal]);
+
+        // Bukan `authorize`: halaman di luar jendela tidak lagi forbidden,
+        // dia dirender sebagai halaman terkunci yang menjelaskan dirinya
+        // sendiri. `Gate::authorize('recordAttendance', …)` yang dipakai di
+        // sini sebelumnya membuat guru mendapat 403 tanpa penjelasan dan
+        // dan tanpa ide siapa yang bisa membantu. Roster dan absensi yang
+        // sudah ada tetap dimuat di bawahnya; view yang tidak merendernya,
+        // supaya `mount()` tidak jadi dua pekerjaan sekaligus: memutuskan
+        // dan mengambil data.
+        $this->bolehUbah = Gate::allows('recordAttendance', [$this->schedule, $this->tanggal]);
 
         // Sengaja whereDate, bukan where: cast `date` menulis `Y-m-d H:i:s` untuk
         // setiap nilai, sehingga kolom ini menyimpan jam 00:00:00 juga di SQLite.
@@ -199,6 +230,20 @@ class AttendanceEntry extends Component
     {
         $this->sukses = false;
 
+        // Diturunkan ulang di sini, bukan dibaca dari `$bolehUbah`. Flag itu
+        // publik, jadi nilainya bisa dikirim balik oleh klien; memakainya
+        // sebagai penjaga berarti halaman terkunci bisa "dibuka" hanya dengan
+        // mengarang satu field. `Gate::allows` menanyakan policy yang sama
+        // pada detik yang sama, jadi hasilnya tidak bisa basi dan tidak bisa
+        // dipalsukan. Pesannya juga kalimat jendela, bukan "kamu tidak
+        // berwenang" dari `AttendanceRecorder` — yang itu menyalahkan orang
+        // untuk aturan yang sebenarnya soal tanggal.
+        if (! Gate::allows('recordAttendance', [$this->schedule, $this->tanggal])) {
+            throw ValidationException::withMessages([
+                'form' => $this->pesanTerkunci(),
+            ]);
+        }
+
         $this->validate();
 
         $this->pastikanBarisLengkap();
@@ -224,6 +269,29 @@ class AttendanceEntry extends Component
 
         $this->sudahDisimpan = true;
         $this->sukses = true;
+    }
+
+    /**
+     * Dua kalimat, dipilih dengan membandingkan tanggal saja. Tidak ada
+     * `isAdmin()`, tidak ada pembacaan `role`: kalau suatu saat jendela edit
+     * diperketat, admin yang kena batasnya tetap menerima kalimat yang sama
+     * persis dengan yang diterima guru.
+     *
+     * Urutan pemeriksaan itu disengaja. Memeriksa masa depan lebih dulu
+     * membuat fungsi ini benar untuk setiap tanggal apa pun tanggal itu, tanpa
+     * bergantung pada pemanggil untuk menjaga agar cabang yang salah tidak
+     * tercapai. Kalau "sudah lewat" diperiksa lebih dulu, tanggal hari ini
+     * jatuh ke kalimat masa depan — benar sekarang hanya karena `bolehUbah`
+     * bernilai `true` untuk hari ini, yaitu karena ada yang tidak boleh
+     * bergantung.
+     */
+    public function pesanTerkunci(): string
+    {
+        if ($this->tanggal->isAfter(today()->endOfDay())) {
+            return 'Absensi untuk tanggal ini belum bisa diisi.';
+        }
+
+        return 'Absensi ini sudah lewat 1 hari. Hubungi admin.';
     }
 
     /**
@@ -265,11 +333,18 @@ class AttendanceEntry extends Component
      * supaya tipenya bisa dinyatakan. `Collection` bersifat invarian, jadi
      * `@param` service tidak bisa sempit selama pemanggil melaporkan
      * barisnya sebagai bentuk yang lebih longgar. Di posisi return
-     * covariance berlaku, jadi `@return list<array<string, mixed>>` di sini
-     * cukup: bentuk asli `array{student_id: …, status: …, note: …}` yang
-     * dibangun di bawah tetap diperiksa oleh `@return` ini, sementara call
-     * site hanya melihat `array<string, mixed>` yang cocok dengan `@param`
+     * covariance berlaku, jadi `@return` di sini cukup untuk membuat call
+     * site melihat `list<array<string, mixed>>` yang cocok dengan `@param`
      * service.
+     *
+     * Yang dijamin anotasi ini hanya itu: setiap baris adalah array
+     * berkunci string. Keberadaan `student_id`, `status`, dan `note` yang
+     * tercatat di `@param` service adalah dokumentasi, bukan jaminan yang
+     * ditegakkan — `@return` yang dinyatakan di sini menggantikan bentuk
+     * yang disimpulkan PHPStan, jadi menghapus salah satu kunci dari
+     * array literal di bawah tidak akan reddenya. Service punya tiga
+     * pembacaan array tanpa penjaga. Bentuk itu harus dijaga review mata,
+     * bukan anotasi.
      *
      * @return list<array<string, mixed>>
      */
@@ -335,6 +410,12 @@ class AttendanceEntry extends Component
     {
         return view('livewire.attendance-entry', [
             'tanggal' => $this->tanggal,
+            // Query ini hanya dibayar saat halamannya memang terkunci. Halaman
+            // yang formnya terbuka tidak pernah membaca daftar admin, jadi
+            // tidak perlu membayarnya di setiap request.
+            'kontakAdmin' => $this->bolehUbah
+                ? new Collection
+                : app(AdminContactsQuery::class)->active(),
         ]);
     }
 }
