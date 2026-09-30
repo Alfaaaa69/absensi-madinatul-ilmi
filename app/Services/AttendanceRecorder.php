@@ -24,13 +24,15 @@ final class AttendanceRecorder
      * disentuh.
      *
      * Setiap baris diharapkan berisi `student_id`, `status` (string atau
-     * `AttendanceStatus`), dan `note` yang boleh tidak ada. Bentuknya tidak
-     * bisa ditulis sebagai `@param` yang sempit: `Collection` bersifat
-     * invarian, jadi tipe baris harus sama persis dengan tipe pemanggil,
-     * dan tidak ada tipe yang bisa diturunkan dari kode nyata mana pun —
-     * `status` bisa string atau enum, `note` bisa ada atau tidak.
+     * `AttendanceStatus`), dan `note` yang boleh tidak ada. Bentuk persisnya
+     * tidak bisa ditulis sebagai `@param` yang sempit: `Collection` bersifat
+     * invarian, jadi tipe baris harus sama persis dengan tipe yang dilaporkan
+     * pemanggil. Karena itu pemanggil melaporkan barisnya sebagai
+     * `list<array<string, mixed>>` — posisi return bersifat covariance, jadi
+     * bentuk `array{student_id: …}` yang sebenarnya dibangun tetap diperiksa
+     * di sisi pemanggil, sementara di sini isinya tidak diabaikan.
      *
-     * @param  Collection<int, mixed>  $rows
+     * @param  Collection<int, array<string, mixed>>  $rows
      */
     public function record(Schedule $schedule, Carbon $date, Collection $rows, User $actor): int
     {

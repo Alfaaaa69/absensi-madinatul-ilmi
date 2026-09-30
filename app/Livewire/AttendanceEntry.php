@@ -203,11 +203,7 @@ class AttendanceEntry extends Component
 
         $this->pastikanBarisLengkap();
 
-        $rows = new Collection(collect(array_keys($this->status))->map(fn (string $id) => [
-            'student_id' => $id,
-            'status' => $this->status[$id],
-            'note' => $this->noteUntuk($id),
-        ])->all());
+        $rows = new Collection($this->barisAbsensi());
 
         try {
             app(AttendanceRecorder::class)->record(
@@ -262,6 +258,34 @@ class AttendanceEntry extends Component
         throw ValidationException::withMessages([
             'form' => 'Daftar siswa di form ini tidak lengkap. Muat ulang halaman lalu isi absensi dari awal.',
         ]);
+    }
+
+    /**
+     * Bentuk baris dirakit di sini, bukan ditulis inline di `simpan()`,
+     * supaya tipenya bisa dinyatakan. `Collection` bersifat invarian, jadi
+     * `@param` service tidak bisa sempit selama pemanggil melaporkan
+     * barisnya sebagai bentuk yang lebih longgar. Di posisi return
+     * covariance berlaku, jadi `@return list<array<string, mixed>>` di sini
+     * cukup: bentuk asli `array{student_id: …, status: …, note: …}` yang
+     * dibangun di bawah tetap diperiksa oleh `@return` ini, sementara call
+     * site hanya melihat `array<string, mixed>` yang cocok dengan `@param`
+     * service.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function barisAbsensi(): array
+    {
+        $rows = [];
+
+        foreach (array_keys($this->status) as $id) {
+            $rows[] = [
+                'student_id' => $id,
+                'status' => $this->status[$id],
+                'note' => $this->noteUntuk($id),
+            ];
+        }
+
+        return $rows;
     }
 
     /**

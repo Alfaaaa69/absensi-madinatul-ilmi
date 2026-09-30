@@ -6,6 +6,7 @@ use App\Enums\AttendanceStatus;
 use App\Livewire\AttendanceEntry;
 use App\Models\Attendance;
 use App\Models\Schedule;
+use App\Models\SchoolClass;
 use App\Models\Student;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -157,12 +158,21 @@ class AttendanceEntrySaveTest extends TestCase
     }
 
     /**
-     * Karena `pastikanBarisLengkap()` menolak batch yang tidak menutup
-     * roster, test ini kini membuktikan form menolak sebelum apa pun ditulis
-     * — bukan lagi rollback transaksinya. Bukti rollback yang sebenarnya ada
-     * di `AttendanceRecorderTest::test_kegagalan_satu_siswa_membatalkan_seluruh_batch`,
-     * yang memanggil service langsung dan memeriksa `Attendance::count()`
-     * tetap nol setelah baris pertama sempat ditulis.
+     * Rollback yang terbukti di sini bukan "tidak ada yang tried menulis",
+     * melainkan "satu baris sempat ditulis lalu dibatalkan".
+     *
+     * `pastikanBarisLengkap()` membandingkan kunci `status` dengan `baris`
+     * yang dimuat `mount()`, dan `mount()` tidak berjalan ulang, jadi kelas
+     * yang dipakai untuk menyusun roster adalah kelas saat halaman dibuka.
+     * Menggeser satu siswa ke kelas lain lewat model — bukan lewat form —
+     * membuat roster yang dihitung penjaga tetap utuh, penjaga lolos, dan
+     * `AttendanceRecorder` yang menolak, karena ia membaca keanggotaan kelas
+     * dari database di dalam `record()`.
+     *
+     * Siswa yang digeser dipilih yang paling akhir di form supaya baris
+     * pertama benar-benar lebih dulu masuk ke transaksi. Kalau tidak begitu,
+     * `Attendance::count() === 0` hanya membuktikan tidak ada yang sempat
+     * ditulis, bukan bahwa rollback bekerja.
      */
     public function test_satu_baris_gagal_membatalkan_seluruh_batch(): void
     {
@@ -172,25 +182,30 @@ class AttendanceEntrySaveTest extends TestCase
             'teacher_id' => $guru->id,
             'class_id' => $kelas->id,
         ]);
-        $asing = Student::factory()->create();
+        $kelasLain = SchoolClass::factory()->create();
         $this->actingAs($guru);
 
-        Livewire::test(AttendanceEntry::class, ['schedule' => $jadwal])
-            ->set('status', [
-                $ids->first() => 'hadir',
-                $asing->id => 'hadir',
-                $ids->last() => 'hadir',
-            ])
-            ->call('simpan')
-            ->assertHasErrors('form');
+        $component = Livewire::test(AttendanceEntry::class, ['schedule' => $jadwal]);
 
+        $urutan = array_keys($component->get('baris'));
+        $terulisDulu = $urutan[0];
+        $pindah = $urutan[1];
+
+        Student::query()->whereKey($pindah)->update(['class_id' => $kelasLain->id]);
+
+        $component->call('simpan')
+            ->assertHasErrors(['student_id', 'form'])
+            ->assertSee('Absensi gagal disimpan. Tidak ada satu pun data yang tersimpan.')
+            ->assertSet('sukses', false);
+
+        $this->assertSame(2, $ids->count());
         $this->assertSame(0, Attendance::count());
-        $this->assertDatabaseMissing('attendances', ['student_id' => $ids->first()]);
-        $this->assertDatabaseMissing('attendances', ['student_id' => $ids->last()]);
+        $this->assertDatabaseMissing('attendances', ['student_id' => $terulisDulu]);
+        $this->assertDatabaseMissing('attendances', ['student_id' => $pindah]);
     }
 
     /**
-     * Absensi parsial berarti siswa yang tidak terkirim tidak punya catatan
+     * Batch parsial berarti siswa yang tidak terkirim tidak punya catatan
      * sama sekali, padahal guru tetap melihat "Absensi tersimpan". Pemulihan
      * di halaman berikutnya bukan perbaikan netral: `mount()` mengisi baris
      * tanpa data dengan `hadir`, jadi pada simpanan guru berikutnya siswa
@@ -247,6 +262,55 @@ class AttendanceEntrySaveTest extends TestCase
 
         $this->assertSame(0, Attendance::count());
         $this->assertDatabaseMissing('attendances', ['student_id' => $ids->first()]);
+    }
+
+    /**
+     * Lampu hijau harus menggambarkan keadaan simpanan terakhir, bukan
+     * hanya bahwa pernah ada simpanan berhasil. Kalau `sukses` tidak
+     * dimatikan ulang di awal `simpan()`, guru yang gagal menyimpan tetap
+     * melihat "Absensi tersimpan" di atas lembar yang isinya tidak berubah
+     * sama sekali — dan itu persis pesan yang paling berbahaya di halaman
+     * ini.
+     *
+     * Test harus memakai satu instance component yang sama: menguji reset
+     * butuh urutan berhasil-lalu-gagal, jadi dua `Livewire::test` terpisah
+     * tidak pernah bisa mengujinya, dan assertion `sukses === false` di jalur
+     * gagal lain tidak pernah menyentuh baris `sukses = false` itu.
+     */
+    public function test_simpan_gagal_setelah_simpan_berhasil_mematikan_lampu_sukses(): void
+    {
+        $guru = User::factory()->guru()->create();
+        [$kelas] = $this->kelasDenganSiswa(2);
+        $jadwal = Schedule::factory()->create([
+            'teacher_id' => $guru->id,
+            'class_id' => $kelas->id,
+        ]);
+        $kelasLain = SchoolClass::factory()->create();
+        $this->actingAs($guru);
+
+        $component = Livewire::test(AttendanceEntry::class, ['schedule' => $jadwal])
+            ->call('simpan')
+            ->assertHasNoErrors()
+            ->assertSet('sukses', true);
+
+        $this->assertSame(2, Attendance::count());
+
+        $urutan = array_keys($component->get('baris'));
+        $diperbarui = $urutan[0];
+        $pindah = $urutan[1];
+
+        Student::query()->whereKey($pindah)->update(['class_id' => $kelasLain->id]);
+
+        $component->set('status.'.$diperbarui, 'izin')
+            ->call('simpan')
+            ->assertHasErrors('form')
+            ->assertSet('sukses', false);
+
+        $this->assertSame(2, Attendance::count());
+        $this->assertSame(
+            AttendanceStatus::Hadir,
+            Attendance::where('student_id', $diperbarui)->firstOrFail()->status,
+        );
     }
 
     public function test_alasan_dibersihkan_saat_status_kembali_hadir(): void
