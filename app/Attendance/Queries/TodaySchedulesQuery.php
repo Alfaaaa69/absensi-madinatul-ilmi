@@ -12,10 +12,17 @@ use Illuminate\Support\Collection;
 /**
  * Jadwal milik satu pengguna untuk satu tanggal.
  *
- * Kandidat dipersempit dengan `teacher_id` supaya query tidak menarik
- * jadwal seluruh sekolah, lalu setiap kandidat tetap ditanyakan ke
- * SchedulePolicy sebagai satu-satunya sumber kebenaran. Tidak ada
+ * Filter `teacher_id` mempersempit kandidat supaya query ini tidak menarik
+ * seluruh jadwal sekolah di setiap permintaan. Setelah itu setiap kandidat
+ * tetap ditanyakan ke SchedulePolicy, sehingga aturan yang menjadi lebih
+ * ketat langsung berlaku di sini tanpa perlu menyentuh kelas ini. Tidak ada
  * kondisi role di kelas ini maupun di view.
+ *
+ * Batasnya perlu dinyatakan terang-terangan: karena penyaringan sudah
+ * terjadi di baris `where`, policy pada titik ini hanya bisa mempersempit,
+ * tidak pernah memperluas. Aturan `view()` yang kelak melebar — misalnya
+ * admin juga melihat semua jadwal — tidak akan terpakai oleh query ini dan
+ * harus ditangani di tempat lain.
  */
 final class TodaySchedulesQuery
 {

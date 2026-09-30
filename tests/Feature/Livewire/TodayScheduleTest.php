@@ -140,10 +140,13 @@ class TodayScheduleTest extends TestCase
 
     public function test_hari_sabtu_menampilkan_empty_state(): void
     {
-        $this->masukSebagaiGuru();
+        $guru = $this->masukSebagaiGuru();
         Carbon::setTestNow(Carbon::parse('2026-09-26', 'Asia/Jakarta'));
 
-        Schedule::factory()->create(['day_of_week' => DayOfWeek::Senin]);
+        Schedule::factory()->create([
+            'teacher_id' => $guru->id,
+            'day_of_week' => DayOfWeek::Senin,
+        ]);
 
         Livewire::test(TodaySchedule::class)
             ->assertOk()
