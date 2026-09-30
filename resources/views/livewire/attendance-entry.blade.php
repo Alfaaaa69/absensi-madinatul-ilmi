@@ -1,12 +1,10 @@
 <div class="py-12">
     <div class="mx-auto max-w-3xl space-y-6 px-4 sm:px-6 lg:px-8">
         <div>
-            <p class="text-sm font-medium text-zinc-500">
-                {{ $schedule->subject->name }} - Kelas {{ $schedule->schoolClass->name }}
-            </p>
-            <h1 class="mt-1 text-4xl font-bold tracking-tight text-zinc-900">
+            <h1 class="text-3xl font-bold tracking-tight text-zinc-900">Absensi {{ $schedule->subject->name }} - Kelas {{ $schedule->schoolClass->name }}</h1>
+            <p class="mt-1 text-2xl font-bold text-zinc-700">
                 {{ \App\Support\IndonesianDate::jam($schedule->start_time) }} - {{ \App\Support\IndonesianDate::jam($schedule->end_time) }}
-            </h1>
+            </p>
         </div>
 
         <div class="rounded-xl border border-zinc-200 bg-zinc-50 p-4">
@@ -37,7 +35,7 @@
         @else
             @if ($sukses)
                 <div class="rounded-xl border border-emerald-300 bg-emerald-50 p-4 text-sm font-medium text-emerald-800">
-                    Absensi tersimpan. Status siswa bisa diubah lagi selama jadwal hari ini atau kemarin masih dibuka.
+                    {{ $this->pesanTersimpan() }}
                 </div>
             @endif
 

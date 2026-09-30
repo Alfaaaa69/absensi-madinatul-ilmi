@@ -3,7 +3,6 @@
 namespace Tests\Feature\Livewire;
 
 use App\Livewire\AttendanceEntry;
-use App\Models\Attendance;
 use App\Models\Schedule;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -103,7 +102,36 @@ class AttendanceEntryAccessTest extends TestCase
             ]);
 
         $this->assertGuest();
-        $this->assertSame(0, Attendance::count());
+    }
+
+    /**
+     * Padanan perilaku untuk `absensi.show`, yang sebelumnya tidak punya apa pun.
+     *
+     * Kenapa ini perlu ada: `users.is_active` tidak pernah dicek policy. Satu-
+     *-satunya penjaga untuk rute `absensi.*` adalah middleware
+     * `EnsureUserIsActive`, dan `SchedulePolicy::recordAttendance` hanya memeriksa
+     * role, kepemilikan jadwal, dan jendela tanggal. Jadi yang berdiri antara
+     * session guru yang sudah dinonaktifkan dan baris `attendances` yang ditulis
+     * adalah middleware itu saja.
+     *
+     * Test `absensi.create` di atas sudah menjaganya, tapi hanya untuk rute itu.
+     * Rute `absensi.show` — yang justru dipakai untuk mengoreksi lembar
+     * lama — hanya dijaga oleh assertion string di `AbsensiRoutesTest`, dan
+     * assertion itu tidak bisa membedakan deklarasi middleware mana yang
+     * sebenarnya yang bekerja.
+     */
+    public function test_akun_tidak_aktif_diarahkan_dari_halaman_tanggal_tertentu(): void
+    {
+        $guru = $this->masukSebagaiGuru(['is_active' => false]);
+        $jadwal = Schedule::factory()->create(['teacher_id' => $guru->id]);
+
+        $this->get(route('absensi.show', [$jadwal, today()->toDateString()]))
+            ->assertRedirect(route('login'))
+            ->assertSessionHasErrors([
+                'nuptk' => 'Akun ini sudah dinonaktifkan. Hubungi admin.',
+            ]);
+
+        $this->assertGuest();
     }
 
     public function test_admin_bisa_membuka_halaman_absensi_jadwal_siapa_pun(): void

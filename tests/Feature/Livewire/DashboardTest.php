@@ -172,6 +172,13 @@ class DashboardTest extends TestCase
             ->assertDontSee('Biologi');
     }
 
+    /**
+     * Kalimat empty state di dashboard dan di `/jadwal` sengaja sama. Spec §5.4
+     * menetapkan kalimatnya sebagai "Tidak ada jadwal mengajar hari ini.", dan
+     * kartu dashboard menampilkan fitur yang sama seperti di halaman jadwal —
+     * dua kalimat berbeda untuk satu keadaan yang sama hanya membuat orang mengira
+     * itu dua keadaan berbeda.
+     */
     public function test_tanpa_jadwal_tampil_empty_state_bukan_error(): void
     {
         $this->aktifTahunAjaran();
@@ -181,7 +188,7 @@ class DashboardTest extends TestCase
         Livewire::actingAs($guru)
             ->test(Dashboard::class)
             ->assertOk()
-            ->assertSee('Tidak ada jadwal hari ini');
+            ->assertSee('Tidak ada jadwal mengajar hari ini.');
     }
 
     public function test_ringkasan_absensi_hari_ini_dihitung_per_status(): void

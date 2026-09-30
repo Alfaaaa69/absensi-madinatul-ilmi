@@ -43,7 +43,12 @@ final class TodaySchedulesQuery
             ->with(['schoolClass', 'subject'])
             ->where('teacher_id', $user->id)
             ->where('day_of_week', $hari)
+            // `start_time` saja tidak menentukan urutan: dua jadwal dengan jam
+            // mulai sama tidak punya urutan yang dijamin database, sehingga
+            // list bisa berganti susunan antar-request. `id` sebagai pemutus
+            // akhir membuat urutannya total dan stabil.
             ->orderBy('start_time')
+            ->orderBy('id')
             ->get()
             ->reject(fn (Schedule $schedule) => ! $policy->view($user, $schedule))
             ->values();

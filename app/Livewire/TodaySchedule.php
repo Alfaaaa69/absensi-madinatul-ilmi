@@ -12,7 +12,7 @@ use Livewire\Attributes\Title;
 use Livewire\Component;
 
 #[Layout('layouts.app')]
-#[Title('Jadwal Hari Ini')]
+#[Title('Jadwal Mengajar Hari Ini')]
 class TodaySchedule extends Component
 {
     public function render(): View

@@ -113,7 +113,7 @@ class AttendanceEntrySaveTest extends TestCase
     public function test_admin_boleh_menyimpan_tanggal_lampau(): void
     {
         $admin = User::factory()->admin()->create();
-        [$kelas, $ids] = $this->kelasDenganSiswa(2);
+        [$kelas] = $this->kelasDenganSiswa(2);
         $jadwal = Schedule::factory()->create([
             'teacher_id' => User::factory()->guru()->create()->id,
             'class_id' => $kelas->id,
@@ -127,7 +127,123 @@ class AttendanceEntrySaveTest extends TestCase
             ->assertHasNoErrors();
 
         $this->assertSame(2, Attendance::whereDate('date', $lampu)->count());
-        $this->assertSame(2, $ids->count());
+    }
+
+    /**
+     * Sisi positif dari jendela 1 hari belum pernah diuji. Setiap test berbasis
+     * tanggal yang ada memakai tanggal **di luar** jendela, jadi tidak ada satu
+     * pun yang membuktikan bahwa guru masih bisa menyimpan lembar kemarin —
+     * dan itulah justru seluruh alasan aturan 1 hari itu ada.
+     *
+     * Yang diproteksi di sini adalah jalur non-hari-ini. `mount()` menerima
+     * tanggal dari parameter rute yang harus cocok namanya, `tanggalDari()`
+     * mengurai, dan `simpan()` menulis memakai tanggal itu. Kalau salah satu
+     * lapis itu berubah:
+     *
+     * - nama parameter mount kembali jadi `tanggal` → `tanggal_absensi` datang
+     *   sebagai `null`, `mount()` jatuh ke hari ini, dan baris tertulis
+     *   bertanggal **hari ini**. Assertion kedua di bawah yang menangkapnya;
+     *   assertion `assertHasNoErrors()` tetap hijau, dan `assertOk()` juga.
+     * - `whereDate` diganti `where` → perbandingan tanggal berhenti cocok di
+     *   SQLite dan storage lama tidak terbaca.
+     * - `tanggalDari()` diubah → tanggal yang dihitung policy bukan tanggal yang
+     *   ditulis, dan jendela ikut bergeser untuk halaman yang sedang dibuka.
+     *
+     * `AttendanceEntryLoadTest::test_tanggal_dari_rute_sampai_ke_halaman` hanya
+     * membuktikan tanggalnya **terrender**; ia tidak pernah memanggil `simpan()`.
+     */
+    public function test_guru_masih_bisa_menyimpan_absensi_kemarin(): void
+    {
+        $guru = User::factory()->guru()->create();
+        [$kelas] = $this->kelasDenganSiswa(2);
+        $jadwal = Schedule::factory()->create([
+            'teacher_id' => $guru->id,
+            'class_id' => $kelas->id,
+        ]);
+        $this->actingAs($guru);
+        $kemarin = today()->subDay()->toDateString();
+
+        Livewire::test(AttendanceEntry::class, [
+            'schedule' => $jadwal,
+            'tanggal_absensi' => $kemarin,
+        ])
+            ->assertOk()
+            ->assertSet('bolehUbah', true)
+            ->call('simpan')
+            ->assertHasNoErrors()
+            ->assertSet('sukses', true);
+
+        $this->assertSame(2, Attendance::whereDate('date', $kemarin)->count());
+
+        // Yang diproteksi bukan hanya "baris tidak ketemu", tapi baris benar-
+        // benar mendarat di slot tanggal yang salah. Tanpa assertion ini test
+        // tetap hijau kalau `tanggal_absensi` diabaikan dan semua baris
+        // diam-diam tercatat untuk hari ini.
+        $this->assertSame(0, Attendance::whereDate('date', today()->toDateString())->count());
+    }
+
+    /**
+     * Kalimat "Absensi tersimpan" sebelumnya selalu menjanjikan "bisa diubah
+     * lagi selama jadwal hari ini atau kemarin masih dibuka" — termasuk ketika
+     * yang menyimpannya adalah admin untuk tanggal lima hari lalu. Kalimat itu
+     * salah untuk pembacanya: jendela satu hari tidak berlaku sama sekali bagi
+     * admin, jadi satu-satunya cara memperbaikinya saat itu juga lewat admin.
+     *
+     * Yang diuji adalah kalimat yang muncul, bukan flag internalnya. Menghapus
+     * `@if ($sukses)` atau membalik cabangnya tetap menghasilkan rendered output
+     * yang sama, dan hanya assertion terhadap teks yang bisa membedakan.
+     *
+     * Kedua cabang diuji karena hanya satu yang bisa salah diam-diam: cabang
+     * dalam jendela akan selalu hijau karena itu yang terjadi pada hampir semua
+     * save, sedangkan cabang luar jendela hanya tercapai oleh admin pada
+     * tanggal lama — kombinasi yang jarang tersentuh.
+     *
+     * Cabang masa depan ikut diuji karena `SchedulePolicy::recordAttendance`
+     * mengembalikan `true` untuk admin tanpa memeriksa tanggal, jadi admin
+     * memang bisa menyimpan lembar yang belum tiba. Tanpa itu, kalimat "masih
+     * bisa diubah sampai jadwal ini lewat 1 hari" akan mengarang batas untuk
+     * tanggal yang belum mulai.
+     */
+    public function test_pesan_simpanan_disesuaikan_dengan_jendela_tanggal(): void
+    {
+        $guru = User::factory()->guru()->create();
+        [$kelas] = $this->kelasDenganSiswa(1);
+        $jadwal = Schedule::factory()->create([
+            'teacher_id' => $guru->id,
+            'class_id' => $kelas->id,
+        ]);
+
+        $this->actingAs($guru);
+
+        Livewire::test(AttendanceEntry::class, [
+            'schedule' => $jadwal,
+            'tanggal_absensi' => today()->subDay()->toDateString(),
+        ])
+            ->call('simpan')
+            ->assertHasNoErrors()
+            ->assertSee('Absensi tersimpan. Status siswa masih bisa diubah sampai jadwal ini lewat 1 hari.')
+            ->assertDontSee('hanya bisa dilakukan oleh admin');
+
+        $admin = User::factory()->admin()->create();
+        $this->actingAs($admin);
+
+        Livewire::test(AttendanceEntry::class, [
+            'schedule' => $jadwal,
+            'tanggal_absensi' => today()->subDays(5)->toDateString(),
+        ])
+            ->call('simpan')
+            ->assertHasNoErrors()
+            ->assertSee('Absensi tersimpan. Tanggal ini sudah lewat 1 hari, jadi perbaikannya hanya bisa dilakukan oleh admin.')
+            ->assertDontSee('masih bisa diubah sampai jadwal ini lewat 1 hari');
+
+        Livewire::test(AttendanceEntry::class, [
+            'schedule' => $jadwal,
+            'tanggal_absensi' => today()->addDay()->toDateString(),
+        ])
+            ->call('simpan')
+            ->assertHasNoErrors()
+            ->assertSee('Absensi tersimpan. Tanggal ini belum tiba, jadi status siswa masih bisa diubah lagi.')
+            ->assertDontSee('sampai jadwal ini lewat 1 hari');
     }
 
     /**
@@ -140,7 +256,7 @@ class AttendanceEntrySaveTest extends TestCase
     public function test_siswa_dari_kelas_lain_ditolak(): void
     {
         $guru = User::factory()->guru()->create();
-        [$kelas, $ids] = $this->kelasDenganSiswa(2);
+        [$kelas] = $this->kelasDenganSiswa(2);
         $jadwal = Schedule::factory()->create([
             'teacher_id' => $guru->id,
             'class_id' => $kelas->id,
@@ -154,7 +270,6 @@ class AttendanceEntrySaveTest extends TestCase
             ->assertHasErrors('form');
 
         $this->assertSame(0, Attendance::count());
-        $this->assertSame(2, $ids->count());
     }
 
     /**
@@ -188,7 +303,7 @@ class AttendanceEntrySaveTest extends TestCase
     public function test_satu_baris_gagal_membatalkan_seluruh_batch(): void
     {
         $guru = User::factory()->guru()->create();
-        [$kelas, $ids] = $this->kelasDenganSiswa(2);
+        [$kelas] = $this->kelasDenganSiswa(2);
         $jadwal = Schedule::factory()->create([
             'teacher_id' => $guru->id,
             'class_id' => $kelas->id,
@@ -217,8 +332,6 @@ class AttendanceEntrySaveTest extends TestCase
             ->assertHasErrors(['student_id', 'form'])
             ->assertSee('Absensi gagal disimpan. Tidak ada satu pun data yang tersimpan.')
             ->assertSet('sukses', false);
-
-        $this->assertSame(2, $ids->count());
         $this->assertSame(0, Attendance::count());
         $this->assertDatabaseMissing('attendances', ['student_id' => $terulisDulu]);
         $this->assertDatabaseMissing('attendances', ['student_id' => $pindah]);

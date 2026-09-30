@@ -98,7 +98,7 @@ class AttendanceEntry extends Component
         // Sengaja whereDate, bukan where: cast `date` menulis `Y-m-d H:i:s` untuk
         // setiap nilai, sehingga kolom ini menyimpan jam 00:00:00 juga di SQLite.
         // MySQL memotongnya jadi DATE, tapi SQLite tidak — `where('date', 'Y-m-d')`
-        // akan hijau di produksi dan merah di test.whereDate aman di keduanya.
+        // akan hijau di produksi dan merah di test. `whereDate` aman di keduanya.
         $tersimpan = Attendance::query()
             ->where('schedule_id', $this->schedule->id)
             ->whereDate('date', $this->tanggal->toDateString())
@@ -292,6 +292,50 @@ class AttendanceEntry extends Component
         }
 
         return 'Absensi ini sudah lewat 1 hari. Hubungi admin.';
+    }
+
+    /**
+     * Kalimat umpan balik setelah simpan, dipilih dari tanggal lembar ini —
+     * bukan dari `role` pemakai halaman.
+     *
+     * Alasannya Deliverable 3 Task 4. Kalimat sebelumnya selalu menjanjikan
+     * lembar masih bisa diubah "selama jadwal hari ini atau kemarin masih
+     * dibuka". Janji itu tidak berlaku untuk semua pembaca halaman yang sama:
+     * admin tidak punya jendela satu hari sama sekali, jadi saat admin menyimpan
+     * tanggal lima hari lalu, satu-satunya jalan memperbaikinya tetap lewat
+     * admin — bukan lewat guru dalam satu hari.
+     *
+     * Yang dinyatakan di sini adalah *aturan*, bukan hak pembaca: kalau
+     * tanggalnya masih di dalam jendela, kalimatnya menyebut batasnya; kalau
+     * sudah lewat, kalimatnya menyatakan siapa yang masih bisa menutup selisih.
+     * Dua kalimat itu sama-sama benar dibaca oleh siapa pun yang membuka
+     * lembarnya, jadi tidak ada `isAdmin()` di sini — sama seperti
+     * `pesanTerkunci()`.
+     *
+     * Cabang masa depan bukan tambahan kemewahan. `recordAttendance`
+     * mengembalikan `true` untuk admin tanpa memeriksa tanggal, jadi admin
+     * **bisa** menyimpan lembar yang tanggalnya belum tiba. Tanpa cabang ini,
+     * lembar itu jatuh ke kalimat "masih bisa diubah sampai lewat 1 hari",
+     * yang mengarang batas untuk tanggal yang belum mulai. Cabang masa depan
+     * di `pesanTerkunci()` tidak bisa dipinjam mentah di sini, justru karena
+     * bentuknya berbeda: policy membolehkan masa depan untuk admin, jadi
+     * kehadiran tanggal itu tidak bisa diasumsikan mustahil.
+     *
+     * Urutan pemeriksaan sama seperti di `pesanTerkunci()`: masa depan dulu,
+     * karena itu satu-satunya kondisi yang harus benar tanpa bergantung pada
+     * siapa yang sedang membaca.
+     */
+    public function pesanTersimpan(): string
+    {
+        if ($this->tanggal->isAfter(today()->endOfDay())) {
+            return 'Absensi tersimpan. Tanggal ini belum tiba, jadi status siswa masih bisa diubah lagi.';
+        }
+
+        if ($this->tanggal->isBefore(today()->subDay()->startOfDay())) {
+            return 'Absensi tersimpan. Tanggal ini sudah lewat 1 hari, jadi perbaikannya hanya bisa dilakukan oleh admin.';
+        }
+
+        return 'Absensi tersimpan. Status siswa masih bisa diubah sampai jadwal ini lewat 1 hari.';
     }
 
     /**

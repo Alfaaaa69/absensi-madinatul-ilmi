@@ -45,7 +45,7 @@
         <flux:heading size="sm" class="text-zinc-600">Jadwal Saya Hari Ini</flux:heading>
 
         @if ($schedules->isEmpty())
-            <p class="py-6 text-sm text-zinc-500">Tidak ada jadwal hari ini.</p>
+            <p class="py-6 text-sm text-zinc-500">Tidak ada jadwal mengajar hari ini.</p>
         @else
             <flux:table>
                 <flux:table.columns>

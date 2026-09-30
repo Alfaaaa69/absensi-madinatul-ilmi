@@ -103,6 +103,43 @@ class AttendanceEntryWindowTest extends TestCase
             ->assertDontSee('Contoh: Demam, acara keluarga, dll');
     }
 
+    /**
+     * `test_form_tidak_dirender_saat_jendela_sudah_tertutup` membuktikan
+     * kontrol form-nya hilang, tapi tidak membuktikan isi roster-nya hilang.
+     * Dua hal itu terpisah: `mount()` tetap memuat `$baris` dari kelas
+     * jadwal, jadi "form tidak dirender" belum otomatis berarti "nama siswa
+     * tidak bocor ke HTML".
+     *
+     * Yang dilindungi di sini adalah halaman terkunci untuk guru yang jadwalnya
+     * bukan milikmu. Kalau nama siswa ikut bocor, guru bisa membaca siapa yang
+     * absen pada jadwal yang sedang dikunci, padahal dia tidak boleh
+     * menyentuhnya sama sekali — itu kebocoran data lintas kelas, bukan sekadar
+     * tampilan.
+     *
+     * Nama diambil dari database, bukan ditulis literal, supaya test ini tetap
+     * benar meski `StudentFactory` diganti sumber namanya.
+     */
+    public function test_halaman_terkunci_tidak_membocorkan_nama_siswa(): void
+    {
+        $guru = User::factory()->guru()->create();
+        $jadwal = $this->jadwalMilik($guru);
+        $this->actingAs($guru);
+        $namaSiswa = Student::query()
+            ->where('class_id', $jadwal->class_id)
+            ->pluck('name');
+
+        $this->assertGreaterThan(0, $namaSiswa->count());
+
+        $component = Livewire::test(AttendanceEntry::class, [
+            'schedule' => $jadwal,
+            'tanggal_absensi' => today()->subDays(3)->toDateString(),
+        ])->assertOk();
+
+        foreach ($namaSiswa as $nama) {
+            $component->assertDontSee($nama);
+        }
+    }
+
     public function test_kontak_admin_tampil_saat_absensi_terkunci(): void
     {
         $guru = User::factory()->guru()->create();
@@ -173,7 +210,7 @@ class AttendanceEntryWindowTest extends TestCase
     public function test_simpan_di_halaman_terkunci_menolak_dengan_pesan_jendela(): void
     {
         $guru = User::factory()->guru()->create();
-        [$kelas, $ids] = $this->kelasDenganDuaSiswa();
+        [$kelas] = $this->kelasDenganDuaSiswa();
         $jadwal = Schedule::factory()->create([
             'teacher_id' => $guru->id,
             'class_id' => $kelas->id,
@@ -191,7 +228,6 @@ class AttendanceEntryWindowTest extends TestCase
             ->assertDontSee('Kamu tidak berwenang mengisi absensi jadwal ini. Hubungi admin.');
 
         $this->assertSame(0, Attendance::count());
-        $this->assertSame(2, $ids->count());
     }
 
     /**

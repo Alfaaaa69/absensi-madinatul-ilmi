@@ -75,6 +75,34 @@ class AttendanceEntryLoadTest extends TestCase
             ->assertDontSee('name="tanggal"', false);
     }
 
+    /**
+     * Heading halaman harus menandai halaman apa yang sedang dibuka. Sebelumnya
+     * satu-satunya `<h1>` berisi rentang jam ("07:00 - 08:30"), sedangkan
+     * mapel dan kelas duduk di `<p>` kecil di atasnya — jadi dokumen tidak punya
+     * heading yang mengidentifikasi absensi yang mana, dan pembaca layar
+     * akan membacakan angka jam sebagai judul halaman.
+     *
+     * Assertion ini memeriksa heading sebagai satu kesatuan, bukan keberadaan
+     * tiap potongan terpisah: memindahkan mapel kembali ke `<p>` masih
+     * memenuhi `assertSee($jadwal->subject->name)`, jadi hanya teks heading
+     * gabungan yang bisa membedakan kedua susunan itu.
+     */
+    public function test_judul_halaman_menyebut_mapel_dan_kelas(): void
+    {
+        [, $jadwal] = $this->jadwalDenganSiswa();
+
+        Livewire::test(AttendanceEntry::class, ['schedule' => $jadwal])
+            ->assertOk()
+            ->assertSeeInOrder(
+                [
+                    '<h1',
+                    'Absensi '.$jadwal->subject->name.' - Kelas '.$jadwal->schoolClass->name,
+                    '</h1>',
+                ],
+                escape: false,
+            );
+    }
+
     public function test_menampilkan_jam_jadwal_besar_di_atas_form(): void
     {
         [, $jadwal] = $this->jadwalDenganSiswa();
