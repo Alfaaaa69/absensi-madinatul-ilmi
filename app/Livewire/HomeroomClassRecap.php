@@ -5,6 +5,7 @@ namespace App\Livewire;
 use App\Livewire\Concerns\InteractsWithRecapPeriod;
 use App\Models\AcademicYear;
 use App\Models\SchoolClass;
+use App\Models\Student;
 use App\Models\User;
 use App\Recap\Queries\HomeroomClassRecapQuery;
 use App\Recap\RecapPeriod;
@@ -54,6 +55,16 @@ class HomeroomClassRecap extends Component
         $this->studentId = null;
     }
 
+    public function statusLabel(string $status): string
+    {
+        return match ($status) {
+            'hadir' => 'Hadir',
+            'izin' => 'Izin',
+            'sakit' => 'Sakit',
+            default => 'Alpa',
+        };
+    }
+
     public function render(): View
     {
         $user = auth()->user();
@@ -66,12 +77,17 @@ class HomeroomClassRecap extends Component
 
         $tahun = $this->year();
         $periode = $this->period($tahun);
+        $siswaDipilih = $this->siswaDipilih($user, $tahun);
 
         return view('livewire.homeroom-class-recap', [
             'tahunAjaran' => $tahun,
             'daftarTahun' => $this->yearOptions(),
             'daftarKelas' => $tahun === null ? collect() : $this->query->ownedClasses($user, $tahun),
             'result' => $tahun === null || $periode === null ? null : $this->rekap($user, $tahun, $periode),
+            'siswaDipilih' => $siswaDipilih,
+            'riwayat' => $siswaDipilih === null || $periode === null
+                ? collect()
+                : $this->query->studentHistory($user, $tahun, $siswaDipilih, $periode),
         ]);
     }
 
@@ -88,5 +104,24 @@ class HomeroomClassRecap extends Component
         }
 
         return $this->query->run($periode);
+    }
+
+    /**
+     * `studentId` datang dari browser dan tidak pernah dipercaya: kelas siswa
+     * dicek terhadap daftar kelas yang diwalikan pengguna sebelum satu baris
+     * pun dibaca.
+     */
+    private function siswaDipilih(User $user, ?AcademicYear $tahun): ?Student
+    {
+        if ($tahun === null || $this->studentId === null) {
+            return null;
+        }
+
+        $siswa = Student::find($this->studentId);
+
+        $milik = $siswa !== null
+            && $this->query->ownedClasses($user, $tahun)->contains('id', $siswa->class_id);
+
+        return $milik ? $siswa : null;
     }
 }

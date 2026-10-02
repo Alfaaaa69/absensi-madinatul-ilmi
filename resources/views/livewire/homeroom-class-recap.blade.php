@@ -28,6 +28,42 @@
         @elseif ($daftarKelas->isEmpty())
             <p class="text-sm text-zinc-600">Kamu belum diwalikan kelas. Hubungi admin.</p>
         @else
+            @php $rowUrl = fn ($siswa) => "lihatSiswa('{$siswa->id}')"; @endphp
+
+            @if ($studentId !== null)
+                <div class="rounded-lg border border-zinc-200 p-4">
+                    <div class="mb-2 flex items-center justify-between">
+                        <h3 class="text-sm font-semibold text-zinc-900">Riwayat Absensi — {{ $siswaDipilih?->name ?? 'Siswa' }}</h3>
+                        <button type="button" wire:click="tutupRiwayat" class="rounded-md border border-zinc-300 bg-white px-3 py-1 text-sm">Tutup</button>
+                    </div>
+
+                    @if ($riwayat->isEmpty())
+                        <p class="text-sm text-zinc-600">Riwayat siswa tidak tersedia.</p>
+                    @else
+                        <table class="min-w-full text-sm">
+                            <thead>
+                                <tr class="border-b">
+                                    <th class="px-2 py-1 text-left">Tanggal</th>
+                                    <th class="px-2 py-1 text-left">Mata Pelajaran</th>
+                                    <th class="px-2 py-1 text-left">Status</th>
+                                    <th class="px-2 py-1 text-left">Alasan</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($riwayat as $baris)
+                                    <tr class="border-b">
+                                        <td class="px-2 py-1">{{ \Illuminate\Support\Carbon::parse($baris['date'])->translatedFormat('d F Y') }}</td>
+                                        <td class="px-2 py-1">{{ $baris['mapel'] }}</td>
+                                        <td class="px-2 py-1">{{ $this->statusLabel($baris['status']) }}</td>
+                                        <td class="px-2 py-1">{{ $baris['note'] ?? '-' }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    @endif
+                </div>
+            @endif
+
             @include('recap.partials.matrix', ['result' => $result])
         @endif
     @endif
