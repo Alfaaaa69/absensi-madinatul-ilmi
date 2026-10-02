@@ -23,6 +23,12 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  * Query-nya memang tidak butuh actor - semua kelas memang yang ditanyakan -
  * jadi `mount()` adalah pagar aksesnya, bukan sekadar penata tampilan.
  *
+ * Karena itu `exportExcel()` dan `exportPdf()` memeriksa gate yang sama sekali
+ * lagi. `mount()` hanya jalan pada request yang merender halaman; tab yang
+ * sudah terbuka tidak memanggilnya lagi, jadi admin yang diturunkan jadi guru
+ * dari panel user management masih bisa mengunduh laporan seluruh sekolah lewat
+ * tab lamanya. Pemeriksaan per-request adalah yang menutup celah itu.
+ *
  * Halaman ini full-page component, jadi tidak memakai shell tab
  * `recap.index` seperti dua halaman rekap sebelumnya.
  */
@@ -69,6 +75,8 @@ class AdminAttendanceReport extends Component
      */
     public function exportExcel(): StreamedResponse
     {
+        Gate::authorize('viewAnyRecap');
+
         $tahun = $this->year();
         $hasil = $this->hasilEkspor($tahun);
 
@@ -84,6 +92,8 @@ class AdminAttendanceReport extends Component
 
     public function exportPdf(): StreamedResponse
     {
+        Gate::authorize('viewAnyRecap');
+
         $tahun = $this->year();
         $hasil = $this->hasilEkspor($tahun);
 

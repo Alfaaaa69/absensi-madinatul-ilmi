@@ -32,8 +32,36 @@ trait InteractsWithRecapPeriod
             ?? AcademicYear::query()->orderByDesc('start_date')->first();
 
         $this->academicYearId = $tahun !== null ? (string) $tahun->id : '';
-        $this->month = now()->format('Y-m');
+        $this->month = $this->defaultMonth($tahun);
         $this->date = now()->toDateString();
+    }
+
+    /**
+     * Bulan bawaan harus berada di dalam tahun ajaran yang dipilih.
+     *
+     * Tanpa penjepitan ini, sekolah yang tahun ajarannya mulai bulan Agustus
+     * akan membuka halaman rekap pada 1 Juli dan langsung menampilkan pesan
+     * "Juli berada di luar tahun ajaran". Aturan "pilih Juli harus error" itu
+     * untuk pilihan pengguna; nilai bawaan yang memang tidak mungkin dipakai
+     * hanya membuat setiap pengguna Juli melihat halaman error sebagai
+     * keadaan pertama.
+     */
+    private function defaultMonth(?AcademicYear $tahun): string
+    {
+        $bulanIni = now()->copy();
+
+        if ($tahun === null) {
+            return $bulanIni->format('Y-m');
+        }
+
+        $awalTahun = $tahun->start_date->copy()->startOfMonth();
+        $akhirTahun = $tahun->end_date->copy()->endOfMonth();
+
+        if ($bulanIni->lessThan($awalTahun)) {
+            return $awalTahun->format('Y-m');
+        }
+
+        return $bulanIni->greaterThan($akhirTahun) ? $akhirTahun->format('Y-m') : $bulanIni->format('Y-m');
     }
 
     /**

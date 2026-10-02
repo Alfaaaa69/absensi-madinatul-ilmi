@@ -22,6 +22,12 @@
         Kelas: {{ $result->classes->pluck('name')->implode(', ') ?: '-' }}
     </div>
 
+    @if (! $result->hasData())
+        <p class="meta">@include('recap.partials.kosong')</p>
+    @endif
+
+    @include('recap.partials.cutoff', ['class' => 'meta'])
+
     <table>
         <thead>
             <tr>
@@ -62,7 +68,7 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="{{ 4 + $result->subjects->count() + 4 }}">Tidak ada data pada periode ini.</td>
+                    <td colspan="{{ 4 + $result->subjects->count() + 4 }}">@include('recap.partials.kosong')</td>
                 </tr>
             @endforelse
         </tbody>

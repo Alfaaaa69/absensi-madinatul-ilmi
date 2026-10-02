@@ -48,11 +48,23 @@ bagian "Backup rutin" untuk caranya.
    berlaku dan semua pengguna harus login ulang. Kalau sudah ada `APP_KEY`,
    pakai ulang yang itu.
 
-4. `php artisan migrate --force`
+4. Pasang dependency. Folder `vendor` tidak ikut masuk ke dalam upload - tanpa
+   langkah ini tidak ada satu pun perintah `php artisan` yang bisa berjalan:
 
-5. **Jangan menjalankan `php artisan db:seed --force` di produksi.**
+   ```
+   composer install --no-dev --optimize-autoloader
+   ```
+
+   Kalau cPanel tidak menyediakan Composer di SSH, jalankan dari komputer lokal
+   dengan `composer install --no-dev --optimize-autoloader` lalu unggah folder
+   `vendor` hasil itu. Jangan pernah mengunggah `vendor` yang berisi
+   development dependency ke produksi.
+
+5. `php artisan migrate --force`
+
+6. **Jangan menjalankan `php artisan db:seed --force` di produksi.**
    Seeder yang ada di repository adalah `DemoSchoolSeeder`: 1 admin, 10 guru,
-   7 kelas, 210 siswa, 105 jadwal, dan sekitar 3.800 baris absensi contoh -
+   7 kelas, 210 siswa, 8 mapel, 105 jadwal, dan 3.150 baris absensi contoh -
    semuanya dengan kata sandi `password`. Dijalankan di produksi, itu mengisi
    database sekolah dengan data fiktif yang harus dihapus manual.
 
@@ -77,17 +89,22 @@ bagian "Backup rutin" untuk caranya.
     NUPTK wajib diisi dan unik. Akun ini yang dipakai untuk membuat akun guru
     dan data master lainnya lewat menu User.
 
-6. `php artisan storage:link`
+7. `php artisan storage:link` - **hanya kalau aplikasi memakai disk `public`.**
+   Saat ini rekap Excel dan PDF dikirim langsung sebagai respons unduhan dan
+   tidak disimpan ke disk, jadi langkah ini belum dibutuhkan. Jangan menjalankannya
+   sekarang, dan jangan ikut mengunggah folder `vendor` ke server.
 
-   Kalau hosting memblokir symlink, jangan membuat tautan simbolik `storage`:
-   jalankan `php artisan storage:unlink`, salin isi `storage/app/public` ke
-   `public/storage` lewat File Manager, dan pastikan `public/storage` writable.
-   Cara ini tidak punya symlink, jadi setelah `deploy` berikutnya yang mengunggah
-   kode baru, salinan itu hilang dan harus diulang.
+   Kalau nanti ada fitur yang menyimpan berkas ke disk `public` (foto siswa,
+   berkas impor, hasil export yang ditahan di server), symlink sering diblokir di
+   shared hosting. Handling-nya: jalankan `php artisan storage:unlink`, salin isi
+   `storage/app/public` ke `public/storage` lewat File Manager, dan pastikan
+   `public/storage` writable. Cara ini tidak punya symlink, jadi setelah
+   `deploy` berikutnya yang mengunggah kode baru, salinan itu hilang dan harus
+   diulang.
 
-7. Buka `/up`. Halaman ini harus mengembalikan 200 sebelum halaman lama diganti.
+8. Buka `/up`. Halaman ini harus mengembalikan 200 sebelum halaman lama diganti.
 
-8. Login sebagai admin, buat tahun ajaran pertama, lalu isi kelas, mapel, siswa,
+9. Login sebagai admin, buat tahun ajaran pertama, lalu isi kelas, mapel, siswa,
    jadwal, dan akun guru. Data master ini tidak punya seeder produksi, jadi
    seluruhnya diinput lewat aplikasi.
 
@@ -122,10 +139,12 @@ bagian "Backup rutin" untuk caranya.
 3. Salin `.env` lama ke folder kode baru, termasuk `APP_KEY` yang sama. Kalau
    `APP_KEY` berbeda, cookie sesi lama tidak berlaku - tidak merusak data,
    tapi semua orang harus login ulang tanpa perlu.
-4. Jalankan `php artisan migrate:status` untuk memastikan tidak ada migrasi yang
-   tertinggal, lalu `php artisan migrate --force` kalau memang ada.
-5. `php artisan storage:link`, atau langkah 6 pada Deploy pertama kalau symlink
-   diblokir.
+4. Jalankan `composer install --no-dev --optimize-autoloader`, lalu
+   `php artisan migrate:status` untuk memastikan tidak ada migrasi yang
+   tertinggal, dan `php artisan migrate --force` kalau memang ada.
+5. `php artisan storage:link` **hanya kalau disk `public` sudah benar-benar
+   dipakai** (lihat langkah 7 pada Deploy pertama). Kalau symlink diblokir,
+   ikuti cara salin manual di langkah tersebut.
 6. Arahkan document root ke folder `public` yang baru, lalu buka `/up`.
 7. Login sebagai admin dan cocokkan satu rekap bulanan dengan hasil export
    minggu sebelumnya. Ini satu-satunya pemeriksaan yang benar-benar memastikan

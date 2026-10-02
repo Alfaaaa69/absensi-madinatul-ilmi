@@ -247,4 +247,61 @@ class HomeroomClassRecapQueryTest extends TestCase
         $this->assertTrue($hasil->subjects->contains('id', $mapelFisika->id));
         $this->assertSame(1, $hasil->rows->first()['cells'][$mapelFisika->id]['hadir']);
     }
+
+    /**
+     * Master data di-soft delete supaya riwayat absensinya tetap ada. Kalau
+     * matriks dan daftar riwayat punya aturan berbeda soal mapel yang dihapus,
+     * wali kelas akan melihat baris untuk mapel yang tidak punya kolom di
+     * matriks, dan dua angka itu tidak bisa dicocokkan.
+     */
+    public function test_mapel_soft_deleted_hilang_dari_matriks_dan_riwayat(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2025-09-15'));
+
+        $wali = User::factory()->guru()->create();
+        $tahun = $this->tahun();
+        $kelas = SchoolClass::factory()->create([
+            'academic_year_id' => $tahun->id,
+            'homeroom_teacher_id' => $wali->id,
+        ]);
+
+        $mapelAktif = Subject::factory()->create(['name' => 'Matematika']);
+        $mapelDihapus = Subject::factory()->create(['name' => 'Fisika']);
+
+        $jadwalAktif = Schedule::factory()->create([
+            'class_id' => $kelas->id,
+            'subject_id' => $mapelAktif->id,
+            'teacher_id' => $wali->id,
+        ]);
+        $jadwalDihapus = Schedule::factory()->create([
+            'class_id' => $kelas->id,
+            'subject_id' => $mapelDihapus->id,
+            'teacher_id' => $wali->id,
+        ]);
+
+        $siswa = Student::factory()->create(['class_id' => $kelas->id]);
+
+        foreach ([$jadwalAktif, $jadwalDihapus] as $jadwal) {
+            Attendance::create([
+                'student_id' => $siswa->id,
+                'schedule_id' => $jadwal->id,
+                'date' => '2025-09-01',
+                'status' => AttendanceStatus::Hadir,
+                'recorded_by' => $wali->id,
+            ]);
+        }
+
+        $mapelDihapus->delete();
+
+        $periode = RecapPeriod::monthly(2025, 9);
+        $hasil = app(HomeroomClassRecapQuery::class)->for($wali, $tahun)->run($periode);
+
+        $this->assertFalse($hasil->subjects->contains('id', $mapelDihapus->id));
+        $this->assertSame(1, $hasil->summary['hadir'], 'Absensi mapel dihapus tidak boleh ikut dihitung.');
+
+        $riwayat = app(HomeroomClassRecapQuery::class)->studentHistory($wali, $tahun, $siswa, $periode);
+
+        $this->assertCount(1, $riwayat);
+        $this->assertSame('Matematika', $riwayat->first()['mapel']);
+    }
 }

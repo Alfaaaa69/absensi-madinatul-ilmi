@@ -7,6 +7,8 @@
     <p class="mb-2 text-sm text-zinc-600">@include('recap.partials.kosong')</p>
 @endif
 
+@include('recap.partials.cutoff')
+
 <div class="overflow-x-auto">
     <table class="min-w-full text-sm">
         <thead>

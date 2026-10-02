@@ -25,8 +25,8 @@ class RecapConfigurationTest extends TestCase
 
         $exporter = app(RecapExporter::class);
 
-        $this->assertSame('laporan-absensi-2025-09-01-2025-09-30.xlsx', $exporter->excelFilename($hasil));
-        $this->assertSame('laporan-absensi-2025-09-01-2025-09-30.pdf', $exporter->pdfFilename($hasil));
+        $this->assertSame('laporan-absensi-2025-09-01-2025-09-15.xlsx', $exporter->excelFilename($hasil));
+        $this->assertSame('laporan-absensi-2025-09-01-2025-09-15.pdf', $exporter->pdfFilename($hasil));
     }
 
     public function test_prefiks_bawaan_menyebut_rentang_periode(): void
@@ -39,8 +39,8 @@ class RecapConfigurationTest extends TestCase
 
         // Rentang tanggal harus tetap ada di nama berkas: dua export untuk
         // bulan berbeda tidak boleh saling menimpa di folder arsip.
-        $this->assertSame('rekap-absensi-2025-09-01-2025-09-30.xlsx', app(RecapExporter::class)->excelFilename($hasil));
-        $this->assertSame('rekap-absensi-2025-09-01-2025-09-30.pdf', app(RecapExporter::class)->pdfFilename($hasil));
+        $this->assertSame('rekap-absensi-2025-09-01-2025-09-15.xlsx', app(RecapExporter::class)->excelFilename($hasil));
+        $this->assertSame('rekap-absensi-2025-09-01-2025-09-15.pdf', app(RecapExporter::class)->pdfFilename($hasil));
     }
 
     public function test_zona_waktu_aplikasi_adalah_jakarta(): void

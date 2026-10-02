@@ -98,7 +98,9 @@ class HomeroomClassRecap extends Component
         if ($this->classId !== null) {
             $kelas = SchoolClass::find($this->classId) ?? abort(404, 'Kelas tidak ditemukan.');
 
-            Gate::authorize('viewRecap', $kelas);
+            // Tahun ajaran ikut diperiksa: kelas milik tahun lain akan 403 di
+            // sini, bukan lolos policy lalu meledak jadi 500 di dalam query.
+            Gate::authorize('viewRecap', [$kelas, $tahun]);
 
             $this->query->forClass($kelas);
         }

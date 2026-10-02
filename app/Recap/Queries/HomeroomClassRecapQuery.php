@@ -131,6 +131,11 @@ final class HomeroomClassRecapQuery
         return DB::table('attendances')
             ->join('schedules', 'schedules.id', '=', 'attendances.schedule_id')
             ->join('subjects', 'subjects.id', '=', 'schedules.subject_id')
+            // Jadwal yang soft delete sudah tersaring oleh `$jadwalIds` di atas.
+            // Mapel belum: query ini lewat query builder, bukan Eloquent, jadi
+            // `SoftDeletes` tidak ikut berlaku. Tanpa filter ini daftar riwayat
+            // menampilkan mapel yang tidak ada kolomnya di matriks.
+            ->whereNull('subjects.deleted_at')
             ->where('attendances.student_id', $student->id)
             ->whereIn('attendances.schedule_id', $jadwalIds)
             ->whereBetween('attendances.date', [$period->start->toDateString(), $akhir->toDateString()])

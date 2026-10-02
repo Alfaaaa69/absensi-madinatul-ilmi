@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Livewire;
 
+use App\Enums\UserRole;
 use App\Livewire\AdminAttendanceReport;
 use App\Models\Attendance;
 use App\Models\User;
@@ -54,7 +55,7 @@ class AdminAttendanceReportTest extends TestCase
         Livewire::actingAs(User::factory()->admin()->create())->test(AdminAttendanceReport::class)
             ->set('month', '2025-09')
             ->call('exportExcel')
-            ->assertFileDownloaded('rekap-absensi-2025-09-01-2025-09-30.xlsx');
+            ->assertFileDownloaded('rekap-absensi-2025-09-01-2025-09-15.xlsx');
     }
 
     public function test_export_ditolak_saat_periode_tidak_valid(): void
@@ -65,5 +66,42 @@ class AdminAttendanceReportTest extends TestCase
             ->set('month', '2025-07')
             ->call('exportExcel')
             ->assertStatus(422);
+    }
+
+    /**
+     * `mount()` hanya jalan sekali, pada request yang merender halaman. Tab yang
+     * sudah terbuka tidak memanggilnya lagi, jadi header tab yang fechar sudah
+     * memuat `Gate::authorize('viewAnyRecap')` tidak cukup untuk action yang
+     *Tilepak di request berikutnya.
+     *
+     * Skenario nyatanya: admin diturunkan jadi guru dari panel user management
+     * sementara tab lapse-nya masih terbuka. Tanpa pemeriksaan ulang, request
+     * export berikutnya tetap berjalan memakai header yang sudah tersimpan.
+     */
+    public function test_export_ditolak_setelah_admin_turun_jadi_guru(): void
+    {
+        RecapScenario::waliKelas();
+        $admin = User::factory()->admin()->create();
+
+        $component = Livewire::actingAs($admin)->test(AdminAttendanceReport::class);
+
+        $admin->forceFill(['role' => UserRole::Guru])->save();
+        // Permintaan berikutnya membaca ulang user dari database.
+        auth()->setUser($admin->fresh());
+
+        $component->call('exportExcel')->assertForbidden();
+    }
+
+    public function test_export_pdf_ditolak_setelah_admin_turun_jadi_guru(): void
+    {
+        RecapScenario::waliKelas();
+        $admin = User::factory()->admin()->create();
+
+        $component = Livewire::actingAs($admin)->test(AdminAttendanceReport::class);
+
+        $admin->forceFill(['role' => UserRole::Guru])->save();
+        auth()->setUser($admin->fresh());
+
+        $component->call('exportPdf')->assertForbidden();
     }
 }

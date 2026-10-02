@@ -74,4 +74,29 @@ final class RecapPeriod
 
         return $this->end->greaterThan($hariIni) ? $hariIni : $this->end;
     }
+
+    /**
+     * Keterangan bahwa periode ini belum selesai, atau `null` kalau sudah.
+     *
+     * `countedEnd()` diam-diam memotong hitungan di tanggal hari ini. Tanpa
+     * keterangan ini, laporan bulan September yang diunduh tanggal 15 tetap
+     * menulis "Periode: September 2025", dan angka yang sama dihitung ulang di
+     * akhir bulan tidak akan cocok - padahal keduanya sama-sama sahih.
+     * Menyebutkan batasnya membuat perbedaan itu terlihat dari laporan itu
+     * sendiri.
+     *
+     * Periode yang belum mulai sama sekali tidak diberi keterangan: tidak ada
+     * satu pun tanggal yang terhitung, dan itu sudah tercermin dari laporan
+     * kosong.
+     */
+    public function countedThroughNote(): ?string
+    {
+        $akhir = $this->countedEnd();
+
+        if ($akhir === null || $this->end->lessThanOrEqualTo($akhir)) {
+            return null;
+        }
+
+        return 'Data per '.$akhir->translatedFormat('j F Y');
+    }
 }

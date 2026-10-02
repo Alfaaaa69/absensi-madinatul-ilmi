@@ -14,6 +14,10 @@
                 <flux:sidebar.group :heading="__('Sistem Absensi')" class="grid">
                     <x-nav.dashboard-link />
 
+                    <x-nav.recap-link />
+
+                    <x-nav.jadwal-link />
+
                     <x-nav.user-link />
 
                     <x-nav.data-master />

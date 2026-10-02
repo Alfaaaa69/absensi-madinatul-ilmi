@@ -35,10 +35,20 @@ class RecapSheet implements FromArray, WithStyles, WithTitle
      */
     public function array(): array
     {
+        // Batas data ditulis di dalam sel Periode, bukan sebagai baris baru:
+        // `BARIS_META` dipakai untuk menebalkan baris header, dan menambah
+        // baris di sini akan menggeser posisi itu.
+        $periode = $this->result->period->label();
+        $catatanBatas = $this->result->period->countedThroughNote();
+
+        if ($catatanBatas !== null) {
+            $periode .= ' ('.$catatanBatas.')';
+        }
+
         $baris = [
             ['LAPORAN KEHADIRAN SISWA'],
             ['Tahun Ajaran', $this->tahun->name ?? '-'],
-            ['Periode', $this->result->period->label()],
+            ['Periode', $periode],
             ['Kelas', $this->result->classes->pluck('name')->implode(', ') ?: '-'],
             [''],
         ];
@@ -61,6 +71,12 @@ class RecapSheet implements FromArray, WithStyles, WithTitle
                     $row['total']['alpa'],
                 ],
             );
+        }
+
+        // Baris ini ditambahkan setelah header, bukan di area metadata, supaya
+        // posisi `BARIS_META` tidak bergeser.
+        if (! $this->result->hasData()) {
+            $baris[] = ['', '', '', '', 'Tidak ada data absensi pada periode ini.'];
         }
 
         $baris[] = [''];
