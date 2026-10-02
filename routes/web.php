@@ -28,6 +28,8 @@ Route::middleware(['auth', EnsureUserIsActive::class])->group(function () {
 
     Route::get('/jadwal', TodaySchedule::class)->name('jadwal.index');
 
+    Route::view('/rekap', 'recap.index')->name('rekap.index');
+
     Route::get('/absensi/{schedule}', AttendanceEntry::class)
         ->middleware(EnsureUserIsActive::class)
         ->name('absensi.create');

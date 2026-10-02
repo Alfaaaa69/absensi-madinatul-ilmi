@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 
@@ -32,6 +33,7 @@ class AppServiceProvider extends ServiceProvider
         $this->configureDefaults();
         $this->registerPolicies();
         $this->registerLoginRateLimiter();
+        $this->registerRecapTabs();
     }
 
     /**
@@ -62,6 +64,32 @@ class AppServiceProvider extends ServiceProvider
                 maxAttempts: AttemptAuthentication::MAX_ATTEMPTS,
                 decaySeconds: AttemptAuthentication::DECAY_SECONDS,
             );
+        });
+    }
+
+    /**
+     * Tab mana yang boleh dilihat pengguna ini, ditentukan di sini — bukan di
+     * Blade — supaya setiap task berikutnya cukup menambah satu entri.
+     *
+     * Wali kelas ditentukan relasi `homeroomClasses()`, bukan kolom
+     * `role`; guru biasa yang kebetulan mengampu kelas tidak mendapat tab ini.
+     *
+     * Setiap entri adalah `['label' => ..., 'component' => ...]`; view
+     * `recap.index` merender nav dan komponennya persis dari daftar ini.
+     */
+    protected function registerRecapTabs(): void
+    {
+        View::composer('recap.index', function ($view): void {
+            $user = auth()->user();
+
+            /** @var array<int,array{label: string, component: string}> $tabs */
+            $tabs = [];
+
+            if ($user instanceof User && $user->homeroomClasses()->exists()) {
+                $tabs[] = ['label' => 'Kelas Saya', 'component' => 'homeroom-class-recap'];
+            }
+
+            $view->with('tabRekap', $tabs);
         });
     }
 
