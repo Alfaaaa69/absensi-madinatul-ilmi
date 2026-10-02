@@ -15,27 +15,27 @@
     </div>
 
     <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        <flux:card class="p-4">
+        <flux:card class="border-s-4 border-s-madrasah-600 p-4">
             <flux:heading size="sm" class="text-zinc-600">Kelas Diawasi</flux:heading>
             <p class="text-2xl font-semibold text-zinc-900">{{ $homeroomCount }}</p>
         </flux:card>
 
-        <flux:card class="p-4">
+        <flux:card class="border-s-4 border-s-madrasah-600 p-4">
             <flux:heading size="sm" class="text-zinc-600">Hadir</flux:heading>
-            <p class="text-2xl font-semibold text-green-700">{{ $counts['hadir'] }}</p>
+            <p class="text-2xl font-semibold text-madrasah-700">{{ $counts['hadir'] }}</p>
         </flux:card>
 
-        <flux:card class="p-4">
+        <flux:card class="border-s-4 border-s-madrasah-600 p-4">
             <flux:heading size="sm" class="text-zinc-600">Izin</flux:heading>
             <p class="text-2xl font-semibold text-blue-700">{{ $counts['izin'] }}</p>
         </flux:card>
 
-        <flux:card class="p-4">
+        <flux:card class="border-s-4 border-s-madrasah-600 p-4">
             <flux:heading size="sm" class="text-zinc-600">Sakit</flux:heading>
             <p class="text-2xl font-semibold text-yellow-700">{{ $counts['sakit'] }}</p>
         </flux:card>
 
-        <flux:card class="p-4">
+        <flux:card class="border-s-4 border-s-madrasah-600 p-4">
             <flux:heading size="sm" class="text-zinc-600">Alpa</flux:heading>
             <p class="text-2xl font-semibold text-red-700">{{ $counts['alpa'] }}</p>
         </flux:card>
