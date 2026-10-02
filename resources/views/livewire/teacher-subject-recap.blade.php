@@ -14,6 +14,8 @@
             <p class="text-sm text-zinc-600">Pilih bulan yang berada di dalam tahun ajaran {{ $tahunAjaran->name }}.</p>
         @elseif ($result->classes->isEmpty())
             <p class="text-sm text-zinc-600">Belum ada jadwal mengajar pada tahun ajaran ini.</p>
+        @elseif ($result->rows->isEmpty())
+            <p class="text-sm text-zinc-600">Kelas ada, tetapi belum ada siswa terdaftar.</p>
         @else
             @include('recap.partials.matrix', ['result' => $result])
         @endif

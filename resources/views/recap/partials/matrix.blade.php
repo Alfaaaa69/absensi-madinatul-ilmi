@@ -1,3 +1,12 @@
+{{-- `rows` berisi satu baris per siswa, bukan per catatan absensi, jadi
+     kelas yang punya siswa tapi belum ada absensi di periode ini tetap punya
+     baris penuh angka nol. Tanpa kalimat di sini, tabel nol itu terbaca
+     seperti "semua siswa tidak hadir". Baris ringkasan tetap dirender: angka
+     nol yang sahih lebih berguna daripada tabel yang hilang. --}}
+@if (! $result->hasData())
+    <p class="mb-2 text-sm text-zinc-600">@include('recap.partials.kosong')</p>
+@endif
+
 <div class="overflow-x-auto">
     <table class="min-w-full text-sm">
         <thead>

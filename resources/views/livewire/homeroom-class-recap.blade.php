@@ -25,6 +25,11 @@
             <p class="text-sm text-zinc-600">Pilih periode yang berada di dalam tahun ajaran {{ $tahunAjaran->name }}.</p>
         @elseif ($daftarKelas->isEmpty())
             <p class="text-sm text-zinc-600">Kamu belum diwalikan kelas. Hubungi admin.</p>
+        @elseif ($result->rows->isEmpty())
+            {{-- Kelas ada tapi siswanya belum ada. Menunggu absensi tidak akan
+                 membantu di sini, jadi kalimatnya harus berbeda dari kondisi
+                 "belum ada data absensi". --}}
+            <p class="text-sm text-zinc-600">Tidak ada siswa terdaftar di kelas ini.</p>
         @else
             @php $rowUrl = fn ($siswa) => "lihatSiswa('{$siswa->id}')"; @endphp
 

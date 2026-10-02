@@ -34,13 +34,12 @@
             </p>
         @elseif ($result->classes->isEmpty())
             <p class="text-sm text-zinc-600">Tidak ada kelas pada tahun ajaran ini.</p>
-        @elseif (! $result->hasData())
-            {{-- Kelas dan siswa ada, tapi belum ada satu pun catatan absensi
-                 di periode ini. Menampilkan tabel berisi baris nol akan
-                 terbaca seperti semua siswa tidak hadir, jadi kalimat yang
-                 sama dengan partial matriks dipakai di sini. --}}
-            <p class="text-sm text-zinc-600">@include('recap.partials.kosong')</p>
+        @elseif ($result->rows->isEmpty())
+            <p class="text-sm text-zinc-600">Kelas ada, tetapi belum ada siswa terdaftar.</p>
         @else
+            {{-- Kalimat "tidak ada data absensi" dan baris ringkasan datang
+                 dari partial matriks, supaya ketiga halaman rekap menampilkan
+                 hal yang sama persis. --}}
             @include('recap.partials.matrix', ['result' => $result])
         @endif
     @endif
