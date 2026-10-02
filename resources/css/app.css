@@ -23,6 +23,17 @@
     --color-zinc-900: #171717;
     --color-zinc-950: #0a0a0a;
 
+    --color-madrasah-50: #ecfdf5;
+    --color-madrasah-100: #d1fae5;
+    --color-madrasah-200: #a7f3d0;
+    --color-madrasah-300: #6ee7b7;
+    --color-madrasah-400: #34d399;
+    --color-madrasah-500: #10b981;
+    --color-madrasah-600: #059669;
+    --color-madrasah-700: #047857;
+    --color-madrasah-800: #065f46;
+    --color-madrasah-900: #064e3b;
+
     --color-accent: var(--color-neutral-800);
     --color-accent-content: var(--color-neutral-800);
     --color-accent-foreground: var(--color-white);
