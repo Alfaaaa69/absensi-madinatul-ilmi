@@ -38,7 +38,7 @@ Nilai-nilai ini berlaku untuk **setiap task**. Jangan menyimpang tanpa keputusan
 | `resources/views/recap/partials/matrix.blade.php` | Task 1 |
 | `resources/views/recap/partials/filter-periode.blade.php` | Task 1 |
 | `resources/views/recap/partials/periode-error.blade.php` | Task 4 |
-| `resources/views/recap/pdf.blade.php` | Task 6 |
+| `resources/views/recap/print.blade.php` | Task 6 dipakai apa adanya (PDF memakai layout yang sama dengan halaman cetak, jadi tidak ada `pdf.blade.php`) |
 | `resources/views/livewire/*.blade.php` | Task 1, 3, 5 |
 | `config/rekap.php` | Task 8 |
 | `tests/Support/RecapScenario.php` | Task 1, dipakai semua task |
@@ -1426,46 +1426,14 @@ php artisan test --filter=RecapConfigurationTest
 
 - Create: `docs/SOP-DEPLOY.md`
 
-Task ini tidak menulis test: yang diuji adalah dokumen, dan dokumen tidak punya runner. Isi file ini adalah hasil akhir dan harus ditulis persis seperti di bawah ini.
+Task ini tidak menulis test: yang diuji adalah dokumen, dan dokumen tidak punya runner. Hasil akhir sudah ditulis di `docs/SOP-DEPLOY.md`.
 
-- [ ] **Step 1: Tulis `docs/SOP-DEPLOY.md`**
-```markdown
-# SOP Deploy Sistem Absensi
+Kerangka awal naskah di sini tidak lagi jadi rujukan karena dua cacat yang ketahuan saat menulis dokumen:
 
-## Prasyarat
-Akses cPanel dan phpMyAdmin, MySQL 8, serta PHP sesuai versi yang dipakai Plan 1.
+- Langkah "seed admin pertama" lewat `php artisan db:seed --force` salah untuk produksi. Seeder yang ada di repository adalah `DemoSchoolSeeder` - 1 admin, 10 guru, 7 kelas, 210 siswa, 105 jadwal, dan sekitar 3.800 baris absensi contoh, semuanya berkata sandi `password`. Akun admin pertama dibuat lewat Tinker, bukan seeder.
+- Pemulihan memakai frasa "pecahkan serialize `.sql`", yang tidak menjelaskan apa pun. Diganti jadi import lewat phpMyAdmin ke database baru.
 
-## Deploy pertama
-1. Unggah kode ke `public_html/absensi`, dengan folder `public` Laravel menjadi document root.
-2. Buat database di cPanel, lalu isi `.env`: `DB_*`, `APP_KEY` dari instalasi lama bila ada, `APP_ENV=production`, `APP_DEBUG=false`, `APP_URL`, `APP_TIMEZONE=Asia/Jakarta`, `QUEUE_CONNECTION=sync`.
-3. `php artisan key:generate` hanya kalau `APP_KEY` belum pernah dibuat. Mengganti `APP_KEY` membatalkan seluruh cookie sesi lama.
-4. `php artisan migrate --force`
-5. `php artisan db:seed --force` hanya untuk mengisi admin pertama dan tahun ajaran awal.
-6. `php artisan storage:link`. Kalau hosting memblokir symlink, jalankan `php artisan storage:unlink`, salin `storage/app/public` ke `public/storage` lewat File Manager, dan pastikan `public/storage` writable.
-7. Buka `/up` untuk memastikan aplikasi sehat sebelum halaman lama diganti.
-
-## Deploy berikutnya
-1. Backup database lewat phpMyAdmin: export semua tabel sebagai `.sql`.
-2. Unggah kode baru, pertahankan file `.env` yang sudah ada.
-3. `php artisan migrate --force`, lalu `php artisan optimize:clear`.
-4. Buka `/up`, cek login, dan cocokkan satu rekap bulanan.
-
-## Backup rutin
-Database di-export mingguan dan disimpan minimal 4 minggu di luar server. Kode tidak perlu dicadangkan karena sumbernya ada di repository.
-
-## Pemulihan
-1. Pecahkan serialize `.sql` ke database baru.
-2. Salin `.env` lama ke folder kode baru.
-3. `php artisan migrate:status` untuk memastikan tidak ada migrasi yang tertinggal.
-4. Jalankan `php artisan storage:link` atau langkah 6 di atas.
-5. Login sebagai admin dan cocokkan satu rekap bulanan dengan hasil export minggu sebelumnya.
-
-## Yang tidak boleh dilakukan
-- `php artisan migrate:fresh` di production. Itu menghapus seluruh data absensi.
-- Mengganti `APP_KEY` tanpa alasan. Semua sesi keluar dan cookie lama tidak berlaku.
-- Menjalankan scheduler atau `queue:work`. `QUEUE_CONNECTION=sync` dan aplikasi tidak punya scheduled task.
-```
-- [ ] **Step 2: Verifikasi dokumen**
+- [ ] **Step 1: Verifikasi setiap perintah di dokumen**
 
 Baca ulang `docs/SOP-DEPLOY.md` dan pastikan setiap perintah yang disebut benar-benar ada di plan ini atau plan sebelumnya. Larangan `migrate:fresh` dan penggantian `APP_KEY` harus tertulis, karena keduanya menghapus atau mengunci data secara permanen.
 
