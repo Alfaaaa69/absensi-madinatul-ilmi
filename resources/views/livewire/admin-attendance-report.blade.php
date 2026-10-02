@@ -9,13 +9,23 @@
         <div class="flex flex-wrap items-end justify-between gap-3">
             @include('recap.partials.filter-periode')
 
-            <button
-                type="button"
-                wire:click="exportExcel"
-                class="rounded-md bg-zinc-900 px-3 py-2 text-sm text-white"
-            >
-                Unduh Excel
-            </button>
+            <div class="flex flex-wrap gap-2">
+                <button
+                    type="button"
+                    wire:click="exportExcel"
+                    class="rounded-md bg-zinc-900 px-3 py-2 text-sm text-white"
+                >
+                    Unduh Excel
+                </button>
+
+                <button
+                    type="button"
+                    wire:click="exportPdf"
+                    class="rounded-md border border-zinc-900 bg-white px-3 py-2 text-sm text-zinc-900"
+                >
+                    Unduh PDF
+                </button>
+            </div>
         </div>
 
         @if ($result === null)

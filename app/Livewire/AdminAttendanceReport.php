@@ -60,11 +60,12 @@ class AdminAttendanceReport extends Component
 
     /**
      * Angka yang diekspor dibangun ulang lewat query yang sama persis dengan
-     * `render()`, jadi isi file Excel dijamin sama dengan yang tampil di layar.
+     * `render()`, jadi isi file Excel dan PDF dijamin sama dengan yang tampil di
+     * layar.
      *
-     * `RecapExporter` mengembalikan string byte, bukan file yang ditulis ke
-     * disk, jadi string itu langsung dialirkan sebagai respons download.
-     * Jangan tulis ke `storage/app`: kuota disk di shared hosting sering mepet.
+     * `RecapExporter` mengembalikan string byte, bukan file yang ditulis ke disk,
+     * jadi string itu langsung dialirkan sebagai respons download. Jangan tulis ke
+     * `storage/app`: kuota disk di shared hosting sering mepet.
      */
     public function exportExcel(): StreamedResponse
     {
@@ -78,6 +79,21 @@ class AdminAttendanceReport extends Component
             static fn () => print ($excel),
             $exporter->excelFilename($hasil),
             ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
+        );
+    }
+
+    public function exportPdf(): StreamedResponse
+    {
+        $tahun = $this->year();
+        $hasil = $this->hasilEkspor($tahun);
+
+        $exporter = app(RecapExporter::class);
+        $pdf = $exporter->toPdf($hasil, $tahun);
+
+        return response()->streamDownload(
+            static fn () => print ($pdf),
+            $exporter->pdfFilename($hasil),
+            ['Content-Type' => 'application/pdf'],
         );
     }
 
