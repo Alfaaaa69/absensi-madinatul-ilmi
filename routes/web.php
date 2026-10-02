@@ -4,6 +4,7 @@ use App\Http\Middleware\EnsureUserIsActive;
 use App\Livewire\AttendanceEntry;
 use App\Livewire\Auth\Login;
 use App\Livewire\Dashboard;
+use App\Livewire\TeacherSubjectRecap;
 use App\Livewire\TodaySchedule;
 use App\Livewire\UserManagement;
 use Illuminate\Support\Facades\Auth;
@@ -29,6 +30,8 @@ Route::middleware(['auth', EnsureUserIsActive::class])->group(function () {
     Route::get('/jadwal', TodaySchedule::class)->name('jadwal.index');
 
     Route::view('/rekap', 'recap.index')->name('rekap.index');
+
+    Route::get('/rekap/mapel-saya', TeacherSubjectRecap::class)->name('rekap.mapel-saya');
 
     Route::get('/absensi/{schedule}', AttendanceEntry::class)
         ->middleware(EnsureUserIsActive::class)

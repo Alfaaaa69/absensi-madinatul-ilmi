@@ -1,9 +1,7 @@
 <div class="mx-auto max-w-6xl space-y-4 px-4 sm:px-6 lg:px-8">
     <h2 class="text-lg font-semibold text-zinc-900">Rekap Kelas Saya</h2>
 
-    @if ($periodError)
-        <div class="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-800">{{ $periodError }}</div>
-    @endif
+    @include('recap.partials.periode-error')
 
     @if (! $tahunAjaran)
         <p class="text-sm text-zinc-600">Belum ada tahun ajaran. Hubungi admin.</p>

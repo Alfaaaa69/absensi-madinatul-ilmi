@@ -89,6 +89,8 @@ class AppServiceProvider extends ServiceProvider
                 $tabs[] = ['label' => 'Kelas Saya', 'component' => 'homeroom-class-recap'];
             }
 
+            $tabs[] = ['label' => 'Mapel Saya', 'component' => 'teacher-subject-recap'];
+
             $view->with('tabRekap', $tabs);
         });
     }
