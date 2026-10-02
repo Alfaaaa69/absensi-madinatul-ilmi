@@ -26,6 +26,8 @@
 
             <flux:spacer />
 
+            <x-theme-toggle class="hidden lg:flex" />
+
             <x-desktop-user-menu class="hidden lg:block" />
         </flux:sidebar>
 
@@ -34,6 +36,8 @@
             <flux:sidebar.toggle class="lg:hidden" icon="bars-2" inset="left" />
 
             <flux:spacer />
+
+            <x-theme-toggle class="lg:hidden" />
 
             <flux:dropdown position="top" align="end">
                 <flux:profile
