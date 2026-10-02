@@ -82,4 +82,38 @@ class RecapPeriodTest extends TestCase
     {
         $this->assertSame('1 September 2025', RecapPeriod::daily(Carbon::parse('2025-09-01'))->label());
     }
+
+    public function test_batas_hitung_diperpendek_sampai_hari_ini(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2025-09-15'));
+
+        $this->assertSame(
+            '2025-09-15',
+            RecapPeriod::monthly(2025, 9)->countedEnd()?->toDateString(),
+        );
+    }
+
+    public function test_periode_lampau_tidak_diubah_batas_hitungnya(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2025-09-15'));
+
+        $this->assertSame(
+            '2025-08-31',
+            RecapPeriod::monthly(2025, 8)->countedEnd()?->toDateString(),
+        );
+    }
+
+    public function test_periode_seluruhnya_di_masa_depan_tidak_punya_batas_hitung(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2025-09-15'));
+
+        $this->assertNull(RecapPeriod::monthly(2025, 10)->countedEnd());
+    }
+
+    public function test_periode_harian_di_masa_depan_tidak_punya_batas_hitung(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2025-09-15'));
+
+        $this->assertNull(RecapPeriod::daily(Carbon::parse('2025-09-16'))->countedEnd());
+    }
 }

@@ -46,4 +46,32 @@ final class RecapPeriod
             ? $this->start->translatedFormat('j F Y')
             : $this->start->translatedFormat('F Y');
     }
+
+    /**
+     * Batas atas yang benar-benar boleh dihitung.
+     *
+     * Admin boleh mengisi absensi untuk tanggal yang belum terjadi, jadi
+     * `end` sendiri bisa berada di masa depan. Menghitung catatan seperti itu
+     * membuat rekap bulan berjalan menampilkan alpa untuk hari yang belum
+     * terjadi, dan laporan yang dicetak kepala sekolah jadi tidak sesuai
+     * kenyataan saat dicetak.
+     *
+     * Seluruh aturan ini hidup di satu method supaya matriks dan drill-down
+     * tidak bisa punya batas atas yang berbeda: kalau salah satu memakai
+     * `$this->end` langsung, angka di daftar riwayat dan angka di tabel
+     * akan berbeda untuk absensi yang sama.
+     *
+     * `null` berarti tidak satu pun bagian periode ini sudah terjadi, jadi
+     * tidak ada yang boleh dihitung sama sekali.
+     */
+    public function countedEnd(): ?Carbon
+    {
+        $hariIni = Carbon::today()->endOfDay();
+
+        if ($this->start->isAfter($hariIni)) {
+            return null;
+        }
+
+        return $this->end->greaterThan($hariIni) ? $hariIni : $this->end;
+    }
 }

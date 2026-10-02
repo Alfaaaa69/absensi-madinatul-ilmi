@@ -122,12 +122,18 @@ final class HomeroomClassRecapQuery
 
         $period->assertWithin($academicYear);
 
+        $akhir = $period->countedEnd();
+
+        if ($akhir === null) {
+            return new Collection;
+        }
+
         return DB::table('attendances')
             ->join('schedules', 'schedules.id', '=', 'attendances.schedule_id')
             ->join('subjects', 'subjects.id', '=', 'schedules.subject_id')
             ->where('attendances.student_id', $student->id)
             ->whereIn('attendances.schedule_id', $jadwalIds)
-            ->whereBetween('attendances.date', [$period->start->toDateString(), $period->end->toDateString()])
+            ->whereBetween('attendances.date', [$period->start->toDateString(), $akhir->toDateString()])
             ->orderBy('attendances.date')
             ->orderBy('subjects.name')
             ->get(['attendances.date', 'subjects.name as mapel', 'attendances.status', 'attendances.note'])
