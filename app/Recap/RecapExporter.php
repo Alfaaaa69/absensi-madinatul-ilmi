@@ -30,13 +30,13 @@ final class RecapExporter
 
     public function excelFilename(RecapResult $result): string
     {
-        return 'rekap-absensi-'.$result->period->start->format('Y-m-d')
+        return config('rekap.file_prefix').'-'.$result->period->start->format('Y-m-d')
             .'-'.$result->period->end->format('Y-m-d').'.xlsx';
     }
 
     public function pdfFilename(RecapResult $result): string
     {
-        return 'rekap-absensi-'.$result->period->start->format('Y-m-d')
+        return config('rekap.file_prefix').'-'.$result->period->start->format('Y-m-d')
             .'-'.$result->period->end->format('Y-m-d').'.pdf';
     }
 
