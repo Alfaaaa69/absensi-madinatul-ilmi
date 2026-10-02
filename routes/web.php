@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\EnsureUserIsActive;
+use App\Livewire\AdminAttendanceReport;
 use App\Livewire\AttendanceEntry;
 use App\Livewire\Auth\Login;
 use App\Livewire\Dashboard;
@@ -32,6 +33,8 @@ Route::middleware(['auth', EnsureUserIsActive::class])->group(function () {
     Route::view('/rekap', 'recap.index')->name('rekap.index');
 
     Route::get('/rekap/mapel-saya', TeacherSubjectRecap::class)->name('rekap.mapel-saya');
+
+    Route::get('/rekap/admin', AdminAttendanceReport::class)->name('rekap.admin');
 
     Route::get('/absensi/{schedule}', AttendanceEntry::class)
         ->middleware(EnsureUserIsActive::class)

@@ -40,7 +40,7 @@
             @empty
                 <tr>
                     <td colspan="{{ 4 + $result->subjects->count() + 4 }}" class="px-2 py-3 text-center text-zinc-500">
-                        Tidak ada data absensi pada periode ini.
+                        @include('recap.partials.kosong')
                     </td>
                 </tr>
             @endforelse

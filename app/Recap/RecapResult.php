@@ -37,6 +37,20 @@ final class RecapResult implements Arrayable
     }
 
     /**
+     * Satu-satunya definisi "ada data absensi pada periode ini".
+     *
+     * `rows` berisi satu baris per siswa, bukan per catatan absensi, jadi
+     * `rows->isEmpty()` saja tidak bisa dipakai: kelas yang punya siswa tapi
+     * belum ada satu pun absensi di periode ini tetap punya baris, dan
+     * seluruh angkanya nol. View harus memeriksa cara yang ini, kalau tidak
+     * tabel penuh baris nol akan terbaca seperti "semua siswa tidak hadir".
+     */
+    public function hasData(): bool
+    {
+        return $this->rows->isNotEmpty() && array_sum($this->summary) > 0;
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function toArray(): array

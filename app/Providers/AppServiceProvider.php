@@ -44,6 +44,8 @@ class AppServiceProvider extends ServiceProvider
     protected function registerPolicies(): void
     {
         Gate::policy(User::class, UserPolicy::class);
+
+        Gate::define('viewAnyRecap', fn (User $user): bool => $user->isAdmin());
     }
 
     /**
@@ -90,6 +92,10 @@ class AppServiceProvider extends ServiceProvider
             }
 
             $tabs[] = ['label' => 'Mapel Saya', 'component' => 'teacher-subject-recap'];
+
+            if ($user instanceof User && $user->isAdmin()) {
+                $tabs[] = ['label' => 'Semua Absensi', 'component' => 'admin-attendance-report'];
+            }
 
             $view->with('tabRekap', $tabs);
         });
