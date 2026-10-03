@@ -1,8 +1,8 @@
 # Desain: Tampilan Visual Absensi Sekolah Islam
 
 Tanggal: 2026-10-02
-Status: menunggu persetujuan
-Cakupan: token warna, aksen hijau, mode terang sebagai default, tombol pengalih tema
+Status: disetujui dan sudah diimplementasikan
+Cakupan: logo sekolah, token warna, aksen hijau, mode terang sebagai default, tombol pengalih tema
 
 ## 1. Tujuan dan batas
 
@@ -74,25 +74,30 @@ satu kelompok token baru di blok `@theme`:
 **tidak disentuh**. Konsekuensinya: tombol Simpan, Tambah, dan item menu aktif
 tetap netral seperti sekarang, dan hanya tiga hal berikut yang memakai hijau.
 
-### 3.1 Tiga pemakai token
+### 3.1 Dua pemakai token
 
 | Pemakai | File | Perubahan |
 | --- | --- | --- |
-| Latar logo | `components/app-logo.blade.php` | `bg-accent-content` jadi `bg-madrasah-700` |
 | Angka Hadir | `livewire/dashboard.blade.php` | `text-green-700` jadi `text-madrasah-700` |
-| Kartu statistik | `livewire/dashboard.blade.php` | tambah `border-s-4 border-madrasah-600` pada lima kartu |
+| Kartu statistik | `livewire/dashboard.blade.php` | tambah `border-s-4 border-s-madrasah-600` pada lima kartu |
 
 Izin, Sakit, dan Alpa tetap memakai warna Tailwind bawaan. Hanya Hadir yang
 mengikuti token sekolah, supaya hijau tidak kehilangan makna sebagai "lulus".
+
+Dulu ada pemakai ketiga, yaitu latar logo. Baris itu dicabut setelah diukur:
+logo sekolah mengisi seluruh kanvasnya sampai ke keempat tepi, sehingga kotak
+32px di belakangnya tertutup 100% dan warna kotak apa pun tidak akan pernah
+terlihat. Memilih warna untuk sesuatu yang tidak terlihat hanya menambah
+keraguan tanpa efek.
 
 ### 3.2 Kenapa tidak mengganti `--color-accent`
 
 Pilihan paling mudah adalah menulis `--color-accent: var(--color-madrasah-700)`.
 itu kelihatan seperti satu baris, tapi efeknya mengganti warna hampir semua
 tombol dan menu aktif di aplikasi, bukan aksen kecil. Kalau nanti identitasnya
-masih terasa lemah, menaikkan intensitas berarti mengubah nilai `--color-accent`
-dan `bg-madrasah-700` di logo. Tidak ada perubahan lain yang perlu dibatalkan,
-jadi jalur naik tersedia tanpa membangun ulang apa pun.
+masih terasa lemah, menaikkan intensitas berarti mengubah nilai
+`--color-accent`. Tidak ada perubahan lain yang perlu dibatalkan, jadi jalur naik
+tersedia tanpa membangun ulang apa pun.
 
 ## 4. Keputusan mode terang
 
@@ -107,17 +112,18 @@ Empat perubahan, semuanya di luar `vendor/`.
 
    ```html
    <script>
-       window.addEventListener('DOMContentLoaded', function () {
-           window.Flux.applyAppearance(
-               window.localStorage.getItem('flux.appearance') || 'light'
-           )
-       })
+       window.Flux.applyAppearance(window.localStorage.getItem('flux.appearance') || 'light')
    </script>
    ```
 
    Tanpa ini, "terang sebagai default" hanya berlaku bagi pengguna yang sistem
    operasinya terang. Baris `|| 'light'` inilah yang menjadikannya default untuk
    semua orang.
+
+   Script ini inline, tidak dibungkus `DOMContentLoaded`. Kalau dibungkus, ia
+   baru berjalan setelah dokumen selesai dimuat, dan kilat tema yang sedang
+   dihindari justru muncul. `@fluxAppearance` sendiri sudah memuat panggilan
+   dengan `'system'` sebagai fallback; panggilan kedua inilah yang menimpanya.
 
 3. **Komponen pengalih.** `resources/views/components/theme-toggle.blade.php`.
    Persyaratannya sudah ditetapkan, bentuk kodenya ditulis saat implementasi:
@@ -132,9 +138,13 @@ Empat perubahan, semuanya di luar `vendor/`.
    - menampilkan mode saat ini sebelum script `<head>` berjalan, supaya tombol
      tidak melompat setelah halaman selesai dimuat
 
-4. **Pasang di dua tempat**: bagian atas sidebar desktop
-   (`layouts/app/sidebar.blade.php`) dan header mobile pada berkas yang sama.
-   Tidak dipasang di halaman login karena login belum punya navigasi.
+4. **Pasang di dua tempat**: sidebar desktop dan header mobile, keduanya di
+   `layouts/app/sidebar.blade.php`. Tombol desktop memakai `hidden lg:flex` di
+   bagian bawah sidebar, tombol mobile memakai `lg:hidden` di header, sehingga
+   tepat satu tombol terlihat pada lebar berapa pun. Tombol tidak ditaruh di
+   header sidebar karena saat sidebar dikecilkan isinya hanya logo dan tombol
+   collapse, tidak ada ruang. Tidak dipasang di halaman login karena login belum
+   punya navigasi.
 
 Dua keadaan saja, terang dan gelap. Opsi "Ikuti sistem" sengaja tidak disertakan
 karena butuh satu keadaan ekstra di komponen dan satu nilai `'system'`; bisa
@@ -151,7 +161,7 @@ repo.
 
 ## 6. Bukti ketelitian
 
-Tiga klaim di dokumen ini sempat salah sebelum diverifikasi, dan ketiganya
+Empat klaim di dokumen ini sempat salah sebelum diverifikasi, dan semuanya
 menunjukkan bahaya yang sama, yaitu menyimpulkan dari satu file tanpa membaca
 file di sekitarnya:
 
@@ -160,10 +170,13 @@ file di sekitarnya:
 - "Header layout aktif" salah. Tidak ada pemanggilnya.
 - "Aksen hijau hanya di beberapa tempat" harus dicek ulang, karena
   `--color-accent` ternyata menentukan tombol, menu aktif, logo, dan focus ring.
+- "Logo sekolah diletakkan di kotak hijau" salah. Logo itu full-bleed, jadi
+  kotaknya tertutup 100% dan tidak pernah terlihat.
 
 Perubahan visual tidak punya gejalanya yang sama seperti perubahan fungsional.
 Salah baca tidak muncul sebagai test merah, tapi sebagai tampilan yang terasa
-aneh dan sulit ditelusuri sumbernya.
+aneh dan sulit ditelusuri sumbernya. Dua dari empat kesalahan di atas baru ketahuan
+karena sebuah berkas diukur, bukan karena dibaca.
 
 ## 7. Test
 
@@ -173,35 +186,53 @@ hanya perilaku yang bisa rusak diam-diam:
 
 | Test | Isi |
 | --- | --- |
-| `ThemeToggleTest` | Komponen render, punya accessible name, dan label sesuai mode |
-| `AppearanceDefaultTest` | `applyAppearance` dipanggil dengan `'light'` saat `localStorage` kosong, dan memakai nilai yang tersimpan kalau ada |
+| `AppearanceDefaultTest` | Halaman login dan dashboard memakai fallback `'light'`, script itu dijalankan setelah `@fluxAppearance`, dan tag `<html>` tidak lagi memuat `class="dark"` |
+| `ThemeToggleTest` | Komponen merender `<button type="button">`, punya nama aksesibel yang berubah, dua ikon, meneruskan atribut luar, dan tidak menulis `localStorage` sendiri |
+| `ThemeTogglePlacementTest` | Tombol muncul tepat dua kali di halaman aplikasi, dan tidak sama sekali di halaman login |
 
-Test harus membayar ongkos yang sebanding dengan risikonya. Kalau test pertama
+Test harus membayar ongkos yang sebanding dengan risikonya. Kalau test komponen
 hanya mengecek `assertSee('sun')`, ia akan lulus walaupun tombolnya tidak punya
 nama aksesibel, dan itu persis kegagalan yang paling mungkin terjadi pada tombol
 ikon.
 
-## 8. Verifikasi
+Dua perilaku tidak bisa diuji PHPUnit dan harus dicek di browser: tombolnya benar
+berpindah tema saat diklik, dan tema ikut berubah di tab lain yang terbuka. Keduanya
+memakai JavaScript; PHPUnit tidak menjalankan JavaScript.
 
-- `php artisan test` , 358 test harus tetap lulus
+## 8. Logo sekolah
+
+**Sudah diputuskan.** `components/app-logo-icon.blade.php` tidak lagi memuat SVG
+logo Laravel. Logo resmi sekolah dipasang sebagai gambar JPEG di
+`public/images/logo-sekolah.jpeg` (364 x 356, sekitar 22 KB).
+
+Berkas JPEG punya latar putih yang tidak bisa dihapus tanpa kehilangan channel
+alpha, dan PNG dengan alpha pun tetap akan menampilkan kotak putih di dalam kotak
+hijau. Karena itu kotak warna di belakang logo dihapus seluruhnya, bukan diganti
+warna. Logo tampil apa adanya.
+
+Keterbatasan yang diketahui: di sidebar mode gelap, yang berlatar `dark:bg-zinc-900`,
+latar putih logo terlihat sebagai persegi putih berukuran 32px. Itu diterima,
+karena logonya sendiri yang berwarna dan persegi putih itu terbaca sebagai kotak
+logo, bukan sebagai kesalahan.
+
+Kalau suatu saat sekolah menyediakan berkas PNG atau SVG dengan latar transparan,
+cukup ganti satu file di `public/images/` dan keterbatasan ini hilang tanpa
+perubahan kode lain.
+
+## 9. Verifikasi
+
+- `php artisan test` , 369 test harus tetap lulus
 - `vendor/bin/pint --test`
 - `vendor/bin/phpstan analyse`
+- `npm run build`
 - Cek manual di browser pada mode terang dan gelap, 375px dan desktop
 
-## 9. Keputusan yang masih terbuka
+## 10. Catatan teknis
 
-**Logo.** `components/app-logo-icon.blade.php` masih memuat SVG logo Laravel.
-Bagian 3.1 hanya mengganti warna latar kotak logo itu. Mengganti isinya dengan
-motif Islam, bulan bintang, kaligrafi, atau geometri, **sengaja tidak dilakukan
-dalam dokumen ini** karena dua alasan. Gambar itu adalah lambang resmi sekolah
-dan tidak boleh dipilih lebih dulu. Selain itu, simbol keagamaan adalah hal yang
-sensitif dan layak diputuskan sendiri oleh pihak sekolah, bukan ditebak.
-
-Selama logo belum tersedia, kotak hijau dengan logo Laravel adalah kondisi
-sementara yang jelas dan mudah diganti. Memasang logo sekolah hanya menyentuh
-satu file SVG.
-
-Setelah keputusan diambil, pilihannya jadi jelas. Kalau memakai logo sekolah,
-ganti `app-logo-icon.blade.php` dan selesai. Kalau ingin motif generik, perlu
-persetujuan terpisah sebelum menggambar, karena hasilnya akan masuk ke repository
-dan dipakai sebagai identitas.
+Tailwind v4 memindai seluruh proyek, bukan hanya `resources/views`. Folder `docs/`
+tidak ada di `.gitignore`, sehingga nama-nama kelas yang hanya tertulis di dokumen
+perancangan ikut terbaca dan membuat utility-nya ter-generate di CSS produksi.
+Untuk plan ini dampaknya nol karena semua kelas yang dipakai view juga ada di
+view. Tapi kalau suatu saat ada kelas yang sengaja hanya disebut di dokumen,
+CSS lokal akan berbeda dari CSS di server. Perbaikannya ada di `@source` pada
+`resources/css/app.css`, di luar cakupan plan ini.
