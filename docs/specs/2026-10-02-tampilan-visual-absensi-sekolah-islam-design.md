@@ -220,6 +220,22 @@ Kalau suatu saat sekolah menyediakan berkas PNG atau SVG dengan latar transparan
 cukup ganti satu file di `public/images/` dan keterbatasan ini hilang tanpa
 perubahan kode lain.
 
+### 8.1 Favicon
+
+Tiga berkas favicon di `public/` dibuat ulang dari logo sekolah yang sama, supaya
+tab browser tidak lagi menampilkan logo Laravel:
+
+| Berkas | Isi | Alasan |
+| --- | --- | --- |
+| `favicon.ico` | 3 bingkai 16, 32, 48 px, PNG di dalam wadah ICO | ukuran yang dipakai browser |
+| `favicon.svg` | SVG yang membungkus PNG 64 px sebagai base64 | logo sumbernya raster, jadi tidak bisa diklaim sebagai vektor |
+| `apple-touch-icon.png` | PNG 180 x 180, tanpa alpha | iOS menolak alpha dan memakai masking sendiri |
+
+Ketiganya memakai inset 4% supaya emblem tidak menempel ke tepi ikon. Hasilnya
+nol piksel merah pada ukuran 16 px, jadi jelas berbeda dari `#FF2D20` milik
+Laravel. `resources/views/partials/head.blade.php` tidak berubah karena ketiga
+link-nya sudah menunjuk ke nama berkas yang sama.
+
 ## 9. Verifikasi
 
 - `php artisan test` , 371 test harus tetap lulus
