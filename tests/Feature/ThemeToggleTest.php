@@ -42,10 +42,43 @@ class ThemeToggleTest extends TestCase
 
     public function test_tidak_menyimpan_state_sendiri_di_local_storage(): void
     {
+        $html = $this->render();
+
         $this->assertStringNotContainsString(
-            'localStorage',
-            $this->render(),
-            'Penyimpanan tema milik Flux, komponen tidak boleh menulis localStorage sendiri'
+            'setItem',
+            $html,
+            'Penyimpanan tema milik Flux, komponen hanya boleh membaca localStorage, tidak menulis'
+        );
+
+        $this->assertStringNotContainsString(
+            'removeItem',
+            $html,
+            'Penyimpanan tema milik Flux, komponen tidak boleh menghapus localStorage'
+        );
+    }
+
+    public function test_handler_storage_menerapkan_tema_yang_dibagikan(): void
+    {
+        $html = $this->render();
+
+        $this->assertStringContainsString(
+            "addEventListener('storage'",
+            $html,
+            'Tombol harus mendengarkan perubahan localStorage dari tab lain'
+        );
+
+        $this->assertMatchesRegularExpression(
+            "/const onStorage[\s\S]*?Flux\.applyAppearance/",
+            $html,
+            'Saat tab lain mengganti tema, tab ini harus benar-benar menerapkan tema baru. '
+            .'Hanya membaca ulang class <html> milik tab sendiri tidak mengubah apa pun'
+        );
+
+        $this->assertStringContainsString(
+            "removeEventListener('storage'",
+            $html,
+            'Listener harus dilepas saat komponen dibongkar, kalau tidak setiap navigasi '
+            .'wire:navigate meninggalkan listener mati di window'
         );
     }
 

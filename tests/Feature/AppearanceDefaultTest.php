@@ -20,6 +20,18 @@ class AppearanceDefaultTest extends TestCase
             );
     }
 
+    public function test_halaman_aplikasi_memakai_default_terang(): void
+    {
+        $user = User::factory()->guru()->create(['is_active' => true]);
+
+        $this->actingAs($user)->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee(
+                "window.Flux.applyAppearance(window.localStorage.getItem('flux.appearance') || 'light')",
+                false
+            );
+    }
+
     public function test_script_default_terang_dijalankan_setelah_flux_appearance(): void
     {
         $html = $this->get(route('login'))->assertOk()->getContent();

@@ -17,7 +17,8 @@ Yang **tidak** termasuk pekerjaan ini:
 - Mengubah apa pun di `vendor/`
 
 Cakupan disepakati bersama pengguna: ganti token warna dan aksen saja, dengan
-satu penambahan di luar cakupan awal, yaitu tombol pengalih tema.
+dua penambahan di luar cakupan awal, yaitu tombol pengalih tema dan pemasangan logo
+sekolah yang sudah ada.
 
 ## 2. Dasar teknis yang sudah diverifikasi
 
@@ -72,7 +73,7 @@ satu kelompok token baru di blok `@theme`:
 
 `--color-accent`, `--color-accent-content`, dan `--color-accent-foreground`
 **tidak disentuh**. Konsekuensinya: tombol Simpan, Tambah, dan item menu aktif
-tetap netral seperti sekarang, dan hanya tiga hal berikut yang memakai hijau.
+tetap netral seperti sekarang, dan hanya dua hal berikut yang memakai hijau.
 
 ### 3.1 Dua pemakai token
 
@@ -186,8 +187,8 @@ hanya perilaku yang bisa rusak diam-diam:
 
 | Test | Isi |
 | --- | --- |
-| `AppearanceDefaultTest` | Halaman login dan dashboard memakai fallback `'light'`, script itu dijalankan setelah `@fluxAppearance`, dan tag `<html>` tidak lagi memuat `class="dark"` |
-| `ThemeToggleTest` | Komponen merender `<button type="button">`, punya nama aksesibel yang berubah, dua ikon, meneruskan atribut luar, dan tidak menulis `localStorage` sendiri |
+| `AppearanceDefaultTest` | Halaman login dan halaman aplikasi sama-sama memuat fallback `'light'`, script itu dijalankan setelah `@fluxAppearance`, dan tag `<html>` di kedua layout tidak lagi memuat `class="dark"` |
+| `ThemeToggleTest` | Komponen merender `<button type="button">`, punya nama aksesibel yang berubah, dua ikon, meneruskan atribut luar, tidak menulis `localStorage` sendiri, dan handler `storage` benar-benar menerapkan tema baru serta melepas listener |
 | `ThemeTogglePlacementTest` | Tombol muncul tepat dua kali di halaman aplikasi, dan tidak sama sekali di halaman login |
 
 Test harus membayar ongkos yang sebanding dengan risikonya. Kalau test komponen
@@ -221,7 +222,7 @@ perubahan kode lain.
 
 ## 9. Verifikasi
 
-- `php artisan test` , 369 test harus tetap lulus
+- `php artisan test` , 371 test harus tetap lulus
 - `vendor/bin/pint --test`
 - `vendor/bin/phpstan analyse`
 - `npm run build`

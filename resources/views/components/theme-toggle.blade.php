@@ -6,11 +6,15 @@
             this.dark = !this.dark
             window.Flux.applyAppearance(this.dark ? 'dark' : 'light')
         },
-        sync() {
-            this.dark = document.documentElement.classList.contains('dark')
-        },
     }"
-    x-init="window.addEventListener('storage', sync)"
+    x-init="{
+        const onStorage = () => {
+            window.Flux.applyAppearance(window.localStorage.getItem('flux.appearance') || 'light')
+            this.dark = document.documentElement.classList.contains('dark')
+        }
+        window.addEventListener('storage', onStorage)
+        return () => window.removeEventListener('storage', onStorage)
+    }"
     x-on:click="toggle()"
     x-bind:aria-label="dark ? 'Aktifkan mode terang' : 'Aktifkan mode gelap'"
     {{ $attributes->merge([
