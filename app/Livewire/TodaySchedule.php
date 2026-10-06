@@ -20,7 +20,11 @@ class TodaySchedule extends Component
         $tanggal = now()->startOfDay();
         $jadwal = app(TodaySchedulesQuery::class)->for(auth()->user(), $tanggal);
 
+        // withTrashed(): kelas yang diarsipkan tetap punya siswa. Tanpa ini kelasnya
+        // tidak muncul di hasil query dan halaman menampilkan "0 siswa", padahal
+        // siswa tetap terdaftar di kelas itu.
         $jumlahSiswa = SchoolClass::query()
+            ->withTrashed()
             ->withCount('students')
             ->whereIn('id', $jadwal->pluck('class_id')->unique())
             ->pluck('students_count', 'id');

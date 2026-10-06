@@ -2,6 +2,7 @@
 
 namespace App\Livewire;
 
+use App\Enums\HasilHapus;
 use App\Enums\StudentGender;
 use App\Models\SchoolClass;
 use App\Models\Student;
@@ -123,15 +124,17 @@ class StudentManagement extends Component
         session()->flash('sukses', $baru ? 'Siswa ditambahkan.' : 'Siswa diperbarui.');
     }
 
-    public function arsipkan(string $id): void
+    public function hapus(string $id): void
     {
         $siswa = Student::findOrFail($id);
 
         Gate::authorize('delete', $siswa);
 
-        app(StudentManager::class)->arsipkan($siswa);
+        $hasil = app(StudentManager::class)->hapus($siswa);
 
-        session()->flash('sukses', "{$siswa->name} diarsipkan, bukan dihapus permanen. Siswa ini punya riwayat absensi yang harus tetap bisa dibaca.");
+        session()->flash('sukses', $hasil === HasilHapus::Permanen
+            ? "{$siswa->name} dihapus permanen."
+            : "{$siswa->name} diarsipkan, bukan dihapus permanen. Siswa ini punya riwayat absensi yang harus tetap bisa dibaca.");
     }
 
     public function pulihkan(string $id): void

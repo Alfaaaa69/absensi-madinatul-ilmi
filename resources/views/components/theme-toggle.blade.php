@@ -1,22 +1,27 @@
+{{--
+    Flux hanya membuka/menutup appearance lewat store reaktif miliknya sendiri
+    ($flux.appearance / $flux.dark). Objects window.Flux.applyAppearance yang
+    dibuat @fluxAppearance hilang begitu Alpine boot karena Flux mengganti
+    window.Flux dengan store itu, jadi komponen ini wajib membaca dan menulis
+    lewat $flux.
+--}}
 <button
     type="button"
     x-data="{
-        dark: document.documentElement.classList.contains('dark'),
         toggle() {
-            this.dark = !this.dark
-            window.Flux.applyAppearance(this.dark ? 'dark' : 'light')
+            $flux.dark = ! $flux.dark
         },
     }"
     x-init="{
-        const onStorage = () => {
-            window.Flux.applyAppearance(window.localStorage.getItem('flux.appearance') || 'light')
-            this.dark = document.documentElement.classList.contains('dark')
+        const onStorage = (event) => {
+            if (event.key !== 'flux.appearance') return
+            $flux.appearance = event.newValue || 'light'
         }
         window.addEventListener('storage', onStorage)
         return () => window.removeEventListener('storage', onStorage)
     }"
     x-on:click="toggle()"
-    x-bind:aria-label="dark ? 'Aktifkan mode terang' : 'Aktifkan mode gelap'"
+    x-bind:aria-label="$flux.dark ? 'Aktifkan mode terang' : 'Aktifkan mode gelap'"
     {{ $attributes->merge([
         'class' => 'flex items-center justify-center rounded-md p-2 text-zinc-500 transition hover:bg-zinc-200/70 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white',
     ]) }}

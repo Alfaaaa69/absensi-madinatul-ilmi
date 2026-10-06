@@ -155,7 +155,7 @@ class SidebarTest extends TestCase
             ->assertSee(route('rekap.index'), escape: false);
     }
 
-    public function test_link_jadwal_saya_ada_untuk_guru_dan_admin(): void
+    public function test_link_jadwal_saya_ada_untuk_guru(): void
     {
         $guru = User::factory()->guru()->create(['is_active' => true]);
 
@@ -163,5 +163,20 @@ class SidebarTest extends TestCase
             ->get('/halaman-uji-sidebar')
             ->assertOk()
             ->assertSee(route('jadwal.index'), escape: false);
+    }
+
+    /**
+     * Admin mengelola jadwal lewat menu Data Master, bukan lewat daftar jadwal
+     * miliknya sendiri, jadi "Jadwal Saya" tidak relevan untuknya.
+     */
+    public function test_admin_tidak_melihat_link_jadwal_saya(): void
+    {
+        $admin = User::factory()->admin()->create(['is_active' => true]);
+
+        $this->actingAs($admin)
+            ->get('/halaman-uji-sidebar')
+            ->assertOk()
+            ->assertDontSee(route('jadwal.index'), escape: false)
+            ->assertDontSee('Jadwal Saya');
     }
 }

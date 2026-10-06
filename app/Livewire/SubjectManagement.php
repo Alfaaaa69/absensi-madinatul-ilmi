@@ -2,6 +2,7 @@
 
 namespace App\Livewire;
 
+use App\Enums\HasilHapus;
 use App\Models\Subject;
 use App\Services\SubjectManager;
 use Illuminate\Contracts\View\View;
@@ -91,15 +92,17 @@ class SubjectManagement extends Component
         session()->flash('sukses', $baru ? 'Mata pelajaran ditambahkan.' : 'Mata pelajaran diperbarui.');
     }
 
-    public function arsipkan(string $id): void
+    public function hapus(string $id): void
     {
         $mapel = Subject::findOrFail($id);
 
         Gate::authorize('delete', $mapel);
 
-        app(SubjectManager::class)->arsipkan($mapel);
+        $hasil = app(SubjectManager::class)->hapus($mapel);
 
-        session()->flash('sukses', 'Mata pelajaran diarsipkan. Jadwal dan absensi lamanya tetap utuh.');
+        session()->flash('sukses', $hasil === HasilHapus::Permanen
+            ? 'Mata pelajaran dihapus permanen.'
+            : 'Mata pelajaran diarsipkan. Jadwal dan absensi lamanya tetap utuh.');
     }
 
     public function pulihkan(string $id): void

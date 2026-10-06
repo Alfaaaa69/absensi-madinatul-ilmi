@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\HasilHapus;
 use App\Enums\UserRole;
 use App\Exceptions\LastActiveAdminException;
 use App\Models\User;
@@ -11,6 +12,8 @@ use Illuminate\Validation\ValidationException;
 
 class UserService
 {
+    public function __construct(private readonly MasterDeletion $deletion) {}
+
     /**
      * @param  array{name: string, nuptk: string, email: ?string, password: string, role: string}  $data
      */
@@ -75,10 +78,12 @@ class UserService
     }
 
     /**
-     * Soft delete. Absensi yang sudah tercatat tetap utuh karena attendances
-     * tidak punya FK cascade ke users.
+     * Guru/admin tanpa riwayat absensi dihapus permanen beserta jadwal
+     * mengajarnya. Kalau ada riwayat — sebagai pencatat maupun lewat jadwal
+     * yang dia ajar — akunnya diarsipkan supaya absensinya tidak kehilangan
+     * jejak orang yang mencatatnya.
      */
-    public function delete(User $actor, User $target): void
+    public function delete(User $actor, User $target): HasilHapus
     {
         if ($actor->is($target)) {
             throw new LastActiveAdminException;
@@ -88,7 +93,7 @@ class UserService
             throw new LastActiveAdminException;
         }
 
-        $target->delete();
+        return $this->deletion->hapus($target);
     }
 
     /**

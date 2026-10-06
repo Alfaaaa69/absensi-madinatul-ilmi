@@ -127,6 +127,35 @@ class DashboardTest extends TestCase
             ->assertSee($kelas->name);
     }
 
+    public function test_jadwal_dengan_mapel_dan_kelas_diarsipkan_tetap_tampil_di_dashboard(): void
+    {
+        $tahun = $this->aktifTahunAjaran();
+
+        $guru = User::factory()->guru()->create(['is_active' => true]);
+        $kelas = SchoolClass::factory()->create([
+            'academic_year_id' => $tahun->id,
+            'homeroom_teacher_id' => $guru->id,
+            'name' => 'VII-A',
+        ]);
+        $mapel = Subject::factory()->create(['name' => 'Matematika']);
+
+        Schedule::factory()->create([
+            'class_id' => $kelas->id,
+            'subject_id' => $mapel->id,
+            'teacher_id' => $guru->id,
+            'day_of_week' => DayOfWeek::from(now()->dayOfWeekIso),
+        ]);
+
+        $mapel->delete();
+        $kelas->delete();
+
+        Livewire::actingAs($guru)
+            ->test(Dashboard::class)
+            ->assertOk()
+            ->assertSee('Matematika')
+            ->assertSee('VII-A');
+    }
+
     public function test_jadwal_hari_lain_tidak_muncul(): void
     {
         $tahun = $this->aktifTahunAjaran();

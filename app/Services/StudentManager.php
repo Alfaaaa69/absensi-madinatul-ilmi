@@ -2,11 +2,14 @@
 
 namespace App\Services;
 
+use App\Enums\HasilHapus;
 use App\Models\Student;
 use Illuminate\Support\Facades\DB;
 
 final class StudentManager
 {
+    public function __construct(private readonly MasterDeletion $deletion) {}
+
     /**
      * @param  array{class_id: string, nisn: string, name: string, gender: string}  $data
      */
@@ -27,9 +30,9 @@ final class StudentManager
         });
     }
 
-    public function arsipkan(Student $student): void
+    public function hapus(Student $student): HasilHapus
     {
-        $student->delete();
+        return $this->deletion->hapus($student);
     }
 
     public function pulihkan(Student $student): void

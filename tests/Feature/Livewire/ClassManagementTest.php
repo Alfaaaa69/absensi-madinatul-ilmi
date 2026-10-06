@@ -71,6 +71,27 @@ class ClassManagementTest extends TestCase
             ->assertDontSee('{null}');
     }
 
+    public function test_wali_kelas_diarsipkan_tetap_menampilkan_namanya(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $wali = User::factory()->guru()->create(['name' => 'Siti Aminah']);
+        SchoolClass::factory()->create([
+            'name' => 'VII-C',
+            'homeroom_teacher_id' => $wali->id,
+        ]);
+
+        // Wali diarsipkan bukan berarti kelas ini belum punya wali. Catatan:
+        // teks "Belum ditentukan" juga muncul sebagai <option> di form, jadi
+        // yang dibuktikan di sini adalah nama walinya tetap tampil.
+        $wali->delete();
+
+        Livewire::actingAs($admin)
+            ->test(ClassManagement::class)
+            ->assertOk()
+            ->assertSee('VII-C')
+            ->assertSee('Siti Aminah');
+    }
+
     public function test_nama_kelas_duplikat_di_tahun_ajaran_yang_sama_ditolak(): void
     {
         $admin = User::factory()->admin()->create();
@@ -170,31 +191,32 @@ class ClassManagementTest extends TestCase
         $admin = User::factory()->admin()->create();
         $kelas = SchoolClass::factory()->create(['name' => 'VII-A']);
         $jadwal = Schedule::factory()->create(['class_id' => $kelas->id]);
-        $siswa = Student::factory()->create(['class_id' => $kelas->id]);
+        $siswa = Student::factory()->count(3)->create(['class_id' => $kelas->id]);
         $absensi = Attendance::factory()->create([
             'schedule_id' => $jadwal->id,
-            'student_id' => $siswa->id,
+            'student_id' => $siswa->first()->id,
         ]);
 
-        Livewire::actingAs($admin)->test(ClassManagement::class)->call('arsipkan', $kelas->id);
+        Livewire::actingAs($admin)
+            ->test(ClassManagement::class)
+            ->call('hapus', $kelas->id)
+            ->assertSee('3 siswa');
 
         $this->assertSoftDeleted('classes', ['id' => $kelas->id]);
         $this->assertSame(0, SchoolClass::where('name', 'VII-A')->count());
         $this->assertDatabaseHas('attendances', ['id' => $absensi->id]);
     }
 
-    public function test_arsipkan_kelas_peringatkan_jumlah_siswa(): void
+    public function test_kelas_tanpa_riwayat_dihapus_permanen_beserta_siswanya(): void
     {
         $admin = User::factory()->admin()->create();
         $kelas = SchoolClass::factory()->create(['name' => 'VII-A']);
-        Student::factory()->count(3)->create(['class_id' => $kelas->id]);
+        $siswa = Student::factory()->count(3)->create(['class_id' => $kelas->id]);
 
-        Livewire::actingAs($admin)
-            ->test(ClassManagement::class)
-            ->call('arsipkan', $kelas->id)
-            ->assertSee('3 siswa');
+        Livewire::actingAs($admin)->test(ClassManagement::class)->call('hapus', $kelas->id);
 
-        $this->assertSoftDeleted('classes', ['id' => $kelas->id]);
+        $this->assertDatabaseMissing('classes', ['id' => $kelas->id]);
+        $this->assertDatabaseMissing('students', ['id' => $siswa->first()->id]);
     }
 
     public function test_kelas_arsip_bisa_dipulihkan(): void

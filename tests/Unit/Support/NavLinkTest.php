@@ -39,12 +39,27 @@ class NavLinkTest extends TestCase
         $this->assertTrue($link->visibleTo(true));
     }
 
+    public function test_link_guru_only_tidak_terlihat_untuk_admin(): void
+    {
+        $link = NavLink::guruOnly('Jadwal Saya', 'jadwal.index', 'calendar-days');
+
+        $this->assertTrue($link->guruOnly);
+        $this->assertFalse($link->visibleTo(true));
+    }
+
+    public function test_link_guru_only_terlihat_untuk_guru(): void
+    {
+        $link = NavLink::guruOnly('Jadwal Saya', 'jadwal.index', 'calendar-days');
+
+        $this->assertTrue($link->visibleTo(false));
+    }
+
     public function test_nav_link_menjadi_array_blade(): void
     {
         $link = new NavLink('Dashboard', 'dashboard', 'home');
 
         $this->assertSame(
-            ['label' => 'Dashboard', 'routeName' => 'dashboard', 'icon' => 'home', 'adminOnly' => false],
+            ['label' => 'Dashboard', 'routeName' => 'dashboard', 'icon' => 'home', 'adminOnly' => false, 'guruOnly' => false],
             $link->toArray()
         );
     }

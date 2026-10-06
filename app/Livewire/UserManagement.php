@@ -2,6 +2,7 @@
 
 namespace App\Livewire;
 
+use App\Enums\HasilHapus;
 use App\Enums\UserRole;
 use App\Exceptions\LastActiveAdminException;
 use App\Models\User;
@@ -18,6 +19,15 @@ use Livewire\WithPagination;
 class UserManagement extends Component
 {
     use WithPagination;
+
+    /**
+     * Flux mencocokkan nama modal saat membuka <dialog>. Nama yang sama dipakai
+     * di view sebagai atribut name, jadi keduanya didefinisikan di sini supaya
+     * tidak bisa berbeda tanpa sengaja.
+     */
+    public const FORM_MODAL = 'form-user';
+
+    public const RESET_MODAL = 'reset-password';
 
     public string $search = '';
 
@@ -71,6 +81,8 @@ class UserManagement extends Component
         $this->password_confirmation = '';
         $this->showForm = true;
         $this->clearValidation();
+
+        $this->dispatch('modal-show', name: self::FORM_MODAL);
     }
 
     public function edit(string $id): void
@@ -91,6 +103,8 @@ class UserManagement extends Component
         $this->password_confirmation = '';
         $this->showForm = true;
         $this->clearValidation();
+
+        $this->dispatch('modal-show', name: self::FORM_MODAL);
     }
 
     public function cancelForm(): void
@@ -180,10 +194,16 @@ class UserManagement extends Component
         $this->authorize('delete', $target);
 
         try {
-            $service->delete($this->actor(), $target);
+            $hasil = $service->delete($this->actor(), $target);
         } catch (LastActiveAdminException $exception) {
             $this->dispatch('toast', type: 'danger', message: $exception->getMessage());
+
+            return;
         }
+
+        $this->dispatch('toast', type: 'success', message: $hasil === HasilHapus::Permanen
+            ? 'Akun dihapus permanen beserta jadwal mengajarnya.'
+            : 'Akun diarsipkan karena masih punya riwayat absensi.');
     }
 
     public function startReset(string $id): void
@@ -197,6 +217,8 @@ class UserManagement extends Component
         $this->password = '';
         $this->password_confirmation = '';
         $this->clearValidation();
+
+        $this->dispatch('modal-show', name: self::RESET_MODAL);
     }
 
     public function cancelReset(): void

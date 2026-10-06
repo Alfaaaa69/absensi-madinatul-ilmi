@@ -4,7 +4,7 @@
      seperti "semua siswa tidak hadir". Baris ringkasan tetap dirender: angka
      nol yang sahih lebih berguna daripada tabel yang hilang. --}}
 @if (! $result->hasData())
-    <p class="mb-2 text-sm text-zinc-600">@include('recap.partials.kosong')</p>
+    <p class="mb-2 text-sm text-zinc-600 dark:text-zinc-400">@include('recap.partials.kosong')</p>
 @endif
 
 @include('recap.partials.cutoff')
@@ -28,12 +28,12 @@
         </thead>
         <tbody>
             @forelse ($result->rows as $index => $row)
-                <tr class="border-b hover:bg-zinc-50">
+                <tr class="border-b hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
                     <td class="px-2 py-1">{{ $index + 1 }}</td>
                     <td class="px-2 py-1">{{ $row['student']->nisn }}</td>
                     <td class="px-2 py-1">
                         @if (isset($rowUrl))
-                            <button type="button" wire:click="{{ $rowUrl($row['student']) }}" class="text-blue-700 underline">{{ $row['student']->name }}</button>
+                            <button type="button" wire:click="{{ $rowUrl($row['student']) }}" class="text-blue-700 underline dark:text-blue-300">{{ $row['student']->name }}</button>
                         @else
                             {{ $row['student']->name }}
                         @endif
@@ -50,7 +50,7 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="{{ 4 + $result->subjects->count() + 4 }}" class="px-2 py-3 text-center text-zinc-500">
+                    <td colspan="{{ 4 + $result->subjects->count() + 4 }}" class="px-2 py-3 text-center text-zinc-500 dark:text-zinc-400">
                         @include('recap.partials.kosong')
                     </td>
                 </tr>
@@ -59,7 +59,7 @@
     </table>
 </div>
 
-<div class="mt-3 text-sm text-zinc-700">
+<div class="mt-3 text-sm text-zinc-700 dark:text-zinc-300">
     Ringkasan — Hadir {{ $result->summary['hadir'] }}, Izin {{ $result->summary['izin'] }},
     Sakit {{ $result->summary['sakit'] }}, Alpa {{ $result->summary['alpa'] }}
 </div>

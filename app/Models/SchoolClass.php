@@ -61,11 +61,15 @@ class SchoolClass extends Model
     }
 
     /**
+     * Wali kelas yang diarsipkan tetap wali kelas ini. Tanpa withTrashed(),
+     * kelas yang waliwartanya sudah keluar akan salah tampil sebagai "Belum
+     * ditentukan". Itu kesalahan pada data, bukan pada tampilan.
+     *
      * @return BelongsTo<User, $this>
      */
     public function homeroomTeacher(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'homeroom_teacher_id');
+        return $this->belongsTo(User::class, 'homeroom_teacher_id')->withTrashed();
     }
 
     /**

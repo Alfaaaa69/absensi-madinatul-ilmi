@@ -5,7 +5,7 @@
 
     <form wire:submit="authenticate" class="space-y-5">
         <div>
-            <label for="nuptk" class="block text-sm font-medium text-zinc-700">
+            <label for="nuptk" class="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
                 NUPTK
             </label>
             <input
@@ -16,15 +16,15 @@
                 autocomplete="username"
                 autofocus
                 required
-                class="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                class="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-zinc-700"
             />
             @error('nuptk')
-                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                <p class="mt-1 text-sm text-red-600 dark:text-red-300">{{ $message }}</p>
             @enderror
         </div>
 
         <div>
-            <label for="password" class="block text-sm font-medium text-zinc-700">
+            <label for="password" class="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
                 Password
             </label>
             <input
@@ -33,19 +33,19 @@
                 type="password"
                 autocomplete="current-password"
                 required
-                class="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                class="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-zinc-700"
             />
             @error('password')
-                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                <p class="mt-1 text-sm text-red-600 dark:text-red-300">{{ $message }}</p>
             @enderror
         </div>
 
-        <label for="remember" class="flex items-center gap-2 text-sm text-zinc-600">
+        <label for="remember" class="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
             <input
                 wire:model="remember"
                 id="remember"
                 type="checkbox"
-                class="rounded border-zinc-300 text-blue-600 focus:ring-blue-500"
+                class="rounded border-zinc-300 text-blue-600 focus:ring-blue-500 dark:text-blue-300 dark:border-zinc-700"
             />
             Ingat saya di perangkat ini
         </label>

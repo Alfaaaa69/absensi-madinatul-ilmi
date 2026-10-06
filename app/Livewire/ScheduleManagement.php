@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Enums\DayOfWeek;
+use App\Enums\HasilHapus;
 use App\Enums\UserRole;
 use App\Models\AcademicYear;
 use App\Models\Schedule;
@@ -127,15 +128,17 @@ class ScheduleManagement extends Component
         session()->flash('sukses', $baru ? 'Jadwal ditambahkan.' : 'Jadwal diperbarui.');
     }
 
-    public function arsipkan(string $id): void
+    public function hapus(string $id): void
     {
         $jadwal = Schedule::findOrFail($id);
 
         Gate::authorize('delete', $jadwal);
 
-        app(ScheduleManager::class)->arsipkan($jadwal);
+        $hasil = app(ScheduleManager::class)->hapus($jadwal);
 
-        session()->flash('sukses', 'Jadwal diarsipkan. Absensi lama pada jadwal ini tetap utuh.');
+        session()->flash('sukses', $hasil === HasilHapus::Permanen
+            ? 'Jadwal dihapus permanen.'
+            : 'Jadwal diarsipkan. Absensi lama pada jadwal ini tetap utuh.');
     }
 
     public function pulihkan(string $id): void
@@ -176,11 +179,13 @@ class ScheduleManagement extends Component
             'hari' => DayOfWeek::cases(),
             'daftar' => Schedule::query()
                 ->when($this->showArchived, fn ($query) => $query->onlyTrashed())
+                // Relasi schedule sudah withTrashed(), tapi whereHas memakai
+                // query sendiri jadi harus disebut eksplisit. Tanpa ini jadwal
+                // dengan kelas ter-arsipkan hilang dari daftar.
                 ->whereHas('schoolClass', fn ($query) => $query
+                    ->withTrashed()
                     ->where('academic_year_id', $this->academic_year_id))
-                ->with('schoolClass')
-                ->with('subject')
-                ->with('teacher')
+                ->with(['schoolClass', 'subject', 'teacher'])
                 ->orderBy('day_of_week')
                 ->orderBy('start_time')
                 ->get(),

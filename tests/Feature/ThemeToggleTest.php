@@ -57,6 +57,40 @@ class ThemeToggleTest extends TestCase
         );
     }
 
+    /**
+     * Flux mendefinisikan window.Flux.applyAppearance lewat @fluxAppearance, tapi
+     * begitu Alpine boot Flux mengganti window.Flux dengan store reaktif yang isinya
+     * hanya toast/modal/modals/appearance/dark. applyAppearance sudah tidak ada, jadi
+     * pemanggilan dari tombol melempar TypeError dan mode gelap tidak pernah berubah.
+     */
+    public function test_tidak_memanggil_apply_appearance_yang_sudah_dihapus_flux(): void
+    {
+        $html = $this->render();
+
+        $this->assertStringNotContainsString(
+            'window.Flux.applyAppearance',
+            $html,
+            'window.Flux sudah bukan objek applyAppearance setelah Alpine boot'
+        );
+    }
+
+    public function test_toggle_mengubah_state_reaktif_flux(): void
+    {
+        $html = $this->render();
+
+        $this->assertStringContainsString(
+            '$flux.dark = ! $flux.dark',
+            $html,
+            'Tombol harus mengubah state reaktif Flux, bukan memanggil fungsi yang sudah hilang'
+        );
+
+        $this->assertStringContainsString(
+            '$flux.dark ?',
+            $html,
+            'Label aksesibel harus membaca state yang sama dengan tombol'
+        );
+    }
+
     public function test_handler_storage_menerapkan_tema_yang_dibagikan(): void
     {
         $html = $this->render();
@@ -68,7 +102,7 @@ class ThemeToggleTest extends TestCase
         );
 
         $this->assertMatchesRegularExpression(
-            "/const onStorage[\s\S]*?Flux\.applyAppearance/",
+            '/const onStorage[\s\S]*?\$flux\.appearance\s*=/',
             $html,
             'Saat tab lain mengganti tema, tab ini harus benar-benar menerapkan tema baru. '
             .'Hanya membaca ulang class <html> milik tab sendiri tidak mengubah apa pun'

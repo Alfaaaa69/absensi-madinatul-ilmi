@@ -87,12 +87,22 @@ class StudentManagementTest extends TestCase
 
         Livewire::actingAs($admin)
             ->test(StudentManagement::class)
-            ->call('arsipkan', $siswa->id)
+            ->call('hapus', $siswa->id)
             ->assertSee('punya riwayat absensi');
 
         $this->assertSoftDeleted('students', ['id' => $siswa->id]);
         $this->assertFalse(Student::query()->whereKey($siswa->id)->exists());
         $this->assertDatabaseHas('attendances', ['id' => $absensi->id]);
+    }
+
+    public function test_siswa_tanpa_riwayat_dihapus_permanen(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $siswa = Student::factory()->create(['nisn' => '3200123456']);
+
+        Livewire::actingAs($admin)->test(StudentManagement::class)->call('hapus', $siswa->id);
+
+        $this->assertDatabaseMissing('students', ['id' => $siswa->id]);
     }
 
     public function test_siswa_arsip_bisa_dipulihkan(): void
@@ -185,6 +195,25 @@ class StudentManagementTest extends TestCase
             ->test(StudentManagement::class)
             ->assertSee('VII-A')
             ->assertSee('2025/2026');
+    }
+
+    public function test_siswa_yang_kelasnya_diarsipkan_tetap_menampilkan_nama_kelas(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $kelas = SchoolClass::factory()->create(['name' => 'VII-A']);
+        Student::factory()->create([
+            'class_id' => $kelas->id,
+            'name' => 'Ahmad Fauzi',
+        ]);
+
+        // Kelas diarsipkan, tapi siswa dan riwayat absensinya tetap harus tampil.
+        $kelas->delete();
+
+        Livewire::actingAs($admin)
+            ->test(StudentManagement::class)
+            ->assertOk()
+            ->assertSee('Ahmad Fauzi')
+            ->assertSee('VII-A');
     }
 
     public function test_guru_tidak_bisa_membuka_halaman_siswa(): void

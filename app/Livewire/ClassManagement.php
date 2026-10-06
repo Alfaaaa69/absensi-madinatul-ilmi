@@ -2,6 +2,7 @@
 
 namespace App\Livewire;
 
+use App\Enums\HasilHapus;
 use App\Enums\UserRole;
 use App\Models\AcademicYear;
 use App\Models\SchoolClass;
@@ -111,20 +112,20 @@ class ClassManagement extends Component
         session()->flash('sukses', $baru ? 'Kelas ditambahkan.' : 'Kelas diperbarui.');
     }
 
-    public function arsipkan(string $id): void
+    public function hapus(string $id): void
     {
         $kelas = SchoolClass::findOrFail($id);
 
         Gate::authorize('delete', $kelas);
 
-        $jumlahSiswa = app(ClassManager::class)->arsipkan($kelas);
+        $jumlahSiswa = $kelas->students()->count();
+        $hasil = app(ClassManager::class)->hapus($kelas);
 
-        session()->flash(
-            'sukses',
-            $jumlahSiswa > 0
-                ? "Kelas {$kelas->name} diarsipkan. {$jumlahSiswa} siswa dan riwayat absensinya tetap tersimpan."
-                : "Kelas {$kelas->name} diarsipkan."
-        );
+        session()->flash('sukses', match (true) {
+            $hasil === HasilHapus::Permanen => "Kelas {$kelas->name} dihapus permanen.",
+            $jumlahSiswa > 0 => "Kelas {$kelas->name} diarsipkan. {$jumlahSiswa} siswa dan riwayat absensinya tetap tersimpan.",
+            default => "Kelas {$kelas->name} diarsipkan.",
+        });
     }
 
     public function pulihkan(string $id): void

@@ -63,6 +63,27 @@ class TodayScheduleTest extends TestCase
             ->assertSee('Belum absen');
     }
 
+    public function test_mapel_dan_kelas_diarsipkan_tidak_membuat_halaman_jadwal_error(): void
+    {
+        $guru = $this->masukSebagaiGuru();
+        $jadwal = Schedule::factory()->create([
+            'teacher_id' => $guru->id,
+            'day_of_week' => DayOfWeek::Senin,
+        ]);
+        Student::factory()->count(2)->create(['class_id' => $jadwal->class_id]);
+
+        $namaMapel = $jadwal->subject->name;
+        $namaKelas = $jadwal->schoolClass->name;
+
+        $jadwal->subject->delete();
+        $jadwal->schoolClass->delete();
+
+        Livewire::test(TodaySchedule::class)
+            ->assertOk()
+            ->assertSee($namaMapel)
+            ->assertSee('Kelas '.$namaKelas.' - 2 siswa');
+    }
+
     public function test_jadwal_guru_lain_tidak_muncul(): void
     {
         $this->masukSebagaiGuru();
@@ -152,6 +173,18 @@ class TodayScheduleTest extends TestCase
             ->assertOk()
             ->assertSee('Sabtu, 26 September 2026')
             ->assertSee('Tidak ada jadwal mengajar hari ini.');
+    }
+
+    /**
+     * Semua test lain di file ini memakai Livewire::test(), yang merender komponen
+     * tanpa layout. Rute HTTP-nya sendiri — termasuk sidebar dan middleware — belum
+     * pernah diuji, jadi kesalahan di sana tidak akan terlihat di sini.
+     */
+    public function test_halaman_jadwal_bisa_diakses_lewat_http(): void
+    {
+        $this->masukSebagaiGuru();
+
+        $this->get(route('jadwal.index'))->assertOk();
     }
 
     /**

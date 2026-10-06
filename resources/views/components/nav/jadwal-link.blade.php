@@ -1,13 +1,15 @@
 @php
-    $link = new \App\Support\NavLink('Jadwal Saya', 'jadwal.index', 'calendar-days');
+    $link = \App\Support\NavLink::guruOnly('Jadwal Saya', 'jadwal.index', 'calendar-days');
 @endphp
 
-{{-- Jadwal juga belum pernah ditautkan dari mana pun sejak Plan 2. --}}
-<flux:sidebar.item
-    icon="{{ $link->icon }}"
-    :href="route($link->routeName)"
-    :current="request()->routeIs('jadwal.*')"
-    wire:navigate
->
-    {{ $link->label }}
-</flux:sidebar.item>
+{{-- Admin mengelola jadwal lewat Data Master, jadi tidak punya "Jadwal Saya". --}}
+@if ($link->visibleTo(auth()->user()->isAdmin()))
+    <flux:sidebar.item
+        icon="{{ $link->icon }}"
+        :href="route($link->routeName)"
+        :current="request()->routeIs('jadwal.*')"
+        wire:navigate
+    >
+        {{ $link->label }}
+    </flux:sidebar.item>
+@endif

@@ -1,10 +1,10 @@
 <div class="mx-auto max-w-6xl space-y-4 px-4 sm:px-6 lg:px-8">
-    <h2 class="text-lg font-semibold text-zinc-900">Rekap Semua Absensi</h2>
+    <h2 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Rekap Semua Absensi</h2>
 
     @include('recap.partials.periode-error')
 
     @if (! $tahunAjaran)
-        <p class="text-sm text-zinc-600">Belum ada tahun ajaran. Hubungi admin.</p>
+        <p class="text-sm text-zinc-600 dark:text-zinc-400">Belum ada tahun ajaran. Hubungi admin.</p>
     @else
         <div class="flex flex-wrap items-end justify-between gap-3">
             @include('recap.partials.filter-periode')
@@ -21,7 +21,7 @@
                 <button
                     type="button"
                     wire:click="exportPdf"
-                    class="rounded-md border border-zinc-900 bg-white px-3 py-2 text-sm text-zinc-900"
+                    class="rounded-md border border-zinc-900 bg-white px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 dark:bg-zinc-900"
                 >
                     Unduh PDF
                 </button>
@@ -29,13 +29,13 @@
         </div>
 
         @if ($result === null)
-            <p class="text-sm text-zinc-600">
+            <p class="text-sm text-zinc-600 dark:text-zinc-400">
                 Pilih periode yang berada di dalam tahun ajaran {{ $tahunAjaran->name }}.
             </p>
         @elseif ($result->classes->isEmpty())
-            <p class="text-sm text-zinc-600">Tidak ada kelas pada tahun ajaran ini.</p>
+            <p class="text-sm text-zinc-600 dark:text-zinc-400">Tidak ada kelas pada tahun ajaran ini.</p>
         @elseif ($result->rows->isEmpty())
-            <p class="text-sm text-zinc-600">Kelas ada, tetapi belum ada siswa terdaftar.</p>
+            <p class="text-sm text-zinc-600 dark:text-zinc-400">Kelas ada, tetapi belum ada siswa terdaftar.</p>
         @else
             {{-- Kalimat "tidak ada data absensi" dan baris ringkasan datang
                  dari partial matriks, supaya ketiga halaman rekap menampilkan

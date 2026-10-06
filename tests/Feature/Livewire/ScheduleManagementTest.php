@@ -237,7 +237,7 @@ class ScheduleManagementTest extends TestCase
         $this->assertSame('07:30', $jadwal->fresh()->start_time->format('H:i'));
     }
 
-    public function test_arsipkan_jadwal_membebaskan_slot(): void
+    public function test_jadwal_tanpa_absensi_dihapus_permanen_dan_membebaskan_slot(): void
     {
         $admin = User::factory()->admin()->create();
         $guru = User::factory()->guru()->create();
@@ -250,10 +250,10 @@ class ScheduleManagementTest extends TestCase
 
         Livewire::actingAs($admin)
             ->test(ScheduleManagement::class)
-            ->call('arsipkan', $jadwal->id)
+            ->call('hapus', $jadwal->id)
             ->assertHasNoErrors();
 
-        $this->assertSoftDeleted('schedules', ['id' => $jadwal->id]);
+        $this->assertDatabaseMissing('schedules', ['id' => $jadwal->id]);
 
         $bentrok = app(ScheduleConflictDetector::class)
             ->findConflicts($guru, DayOfWeek::Senin->value, '07:00:00', '08:30:00');
@@ -261,7 +261,7 @@ class ScheduleManagementTest extends TestCase
         $this->assertSame([], $bentrok);
     }
 
-    public function test_arsipkan_jadwal_tidak_menghapus_absensi_lama(): void
+    public function test_jadwal_berisi_absensi_hanya_diarsipkan(): void
     {
         $admin = User::factory()->admin()->create();
         $jadwal = Schedule::factory()->create();
@@ -271,9 +271,52 @@ class ScheduleManagementTest extends TestCase
             'student_id' => $siswa->id,
         ]);
 
-        Livewire::actingAs($admin)->test(ScheduleManagement::class)->call('arsipkan', $jadwal->id);
+        Livewire::actingAs($admin)->test(ScheduleManagement::class)->call('hapus', $jadwal->id);
 
+        $this->assertSoftDeleted('schedules', ['id' => $jadwal->id]);
         $this->assertDatabaseHas('attendances', ['id' => $absensi->id]);
+    }
+
+    public function test_jadwal_dengan_guru_diarsipkan_tetap_menampilkan_nama_guru(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $guru = User::factory()->guru()->create(['name' => 'Budi Santoso']);
+
+        Schedule::factory()->create([
+            'teacher_id' => $guru->id,
+            'day_of_week' => DayOfWeek::Senin,
+        ]);
+
+        // Guru diarsipkan, tapi jadwal dan riwayat absensinya harus tetap utuh.
+        $guru->delete();
+
+        $this->actingAs($admin)
+            ->get('/master/jadwal')
+            ->assertOk()
+            ->assertSee('Budi Santoso');
+    }
+
+    public function test_jadwal_dengan_kelas_dan_mapel_diarsipkan_tetap_bisa_dirender(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $kelas = SchoolClass::factory()->create(['name' => 'VII-A']);
+        $mapel = Subject::factory()->create(['name' => 'Matematika']);
+
+        Schedule::factory()->create([
+            'class_id' => $kelas->id,
+            'subject_id' => $mapel->id,
+            'teacher_id' => User::factory()->guru()->create()->id,
+            'day_of_week' => DayOfWeek::Senin,
+        ]);
+
+        $kelas->delete();
+        $mapel->delete();
+
+        $this->actingAs($admin)
+            ->get('/master/jadwal')
+            ->assertOk()
+            ->assertSee('VII-A')
+            ->assertSee('Matematika');
     }
 
     public function test_guru_tidak_bisa_membuka_halaman_jadwal(): void

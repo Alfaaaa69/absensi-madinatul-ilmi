@@ -83,6 +83,47 @@ class UserManagementTest extends TestCase
             ->assertDontSee('Siti Aminah');
     }
 
+    /**
+     * Flux hanya membuka <dialog> lewat event 'modal-show' yang namanya cocok
+     * dengan atribut name milik modal. Menyalakan $showForm hanya membuat elemen
+     * modal ikut ter-render, tidak membukanya, jadi tanpa dispatch ini klik
+     * "Tambah User" terlihat seperti tidak terjadi apa-apa.
+     */
+    public function test_tambah_user_memerintahkan_modal_form_untuk_dibuka(): void
+    {
+        $admin = $this->admin();
+
+        Livewire::actingAs($admin)
+            ->test(UserManagement::class)
+            ->call('create')
+            ->assertSee('data-modal="'.UserManagement::FORM_MODAL.'"', escape: false)
+            ->assertDispatched('modal-show', name: UserManagement::FORM_MODAL);
+    }
+
+    public function test_ubah_user_memerintahkan_modal_form_untuk_dibuka(): void
+    {
+        $admin = $this->admin();
+        $target = User::factory()->guru()->create(['is_active' => true]);
+
+        Livewire::actingAs($admin)
+            ->test(UserManagement::class)
+            ->call('edit', $target->id)
+            ->assertSee('data-modal="'.UserManagement::FORM_MODAL.'"', escape: false)
+            ->assertDispatched('modal-show', name: UserManagement::FORM_MODAL);
+    }
+
+    public function test_reset_password_memerintahkan_modal_reset_untuk_dibuka(): void
+    {
+        $admin = $this->admin();
+        $target = User::factory()->guru()->create(['is_active' => true]);
+
+        Livewire::actingAs($admin)
+            ->test(UserManagement::class)
+            ->call('startReset', $target->id)
+            ->assertSee('data-modal="'.UserManagement::RESET_MODAL.'"', escape: false)
+            ->assertDispatched('modal-show', name: UserManagement::RESET_MODAL);
+    }
+
     public function test_admin_bisa_membuat_user_baru(): void
     {
         $admin = $this->admin();
@@ -312,7 +353,9 @@ class UserManagementTest extends TestCase
             ->call('delete', $target->id)
             ->assertHasNoErrors();
 
-        $this->assertSoftDeleted('users', ['id' => $target->id]);
+        // Guru ini belum pernah mengajar ataupun mencatat absensi, jadi
+        // tidak ada alasan untuk menyimpan barisnya.
+        $this->assertDatabaseMissing('users', ['id' => $target->id]);
     }
 
     public function test_menghapus_user_tidak_menghapus_absensi_yang_sudah_tercatat(): void

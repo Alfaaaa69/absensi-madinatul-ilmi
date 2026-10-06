@@ -75,6 +75,20 @@ class AttendanceEntryLoadTest extends TestCase
             ->assertDontSee('name="tanggal"', false);
     }
 
+    public function test_mapel_diarsipkan_tetap_muncul_di_judul_absensi(): void
+    {
+        [, $jadwal] = $this->jadwalDenganSiswa();
+
+        $namaMapel = $jadwal->subject->name;
+
+        // Mapel diarsipkan, tapi riwayat absensi jadwal ini tidak boleh hilang.
+        $jadwal->subject->delete();
+
+        Livewire::test(AttendanceEntry::class, ['schedule' => $jadwal->fresh()])
+            ->assertOk()
+            ->assertSee($namaMapel);
+    }
+
     /**
      * Heading halaman harus menandai halaman apa yang sedang dibuka. Sebelumnya
      * satu-satunya `<h1>` berisi rentang jam ("07:00 - 08:30"), sedangkan
