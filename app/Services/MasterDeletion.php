@@ -61,16 +61,20 @@ final class MasterDeletion
                 ->exists();
         }
 
+        // whereHas memakai scope global relasi, dan relasi attendance ke
+        // jadwal/siswa ber-SoftDeletes — jadi tanpa withTrashed() anak yang
+        // sudah terarsip hilang dari hasilnya. Induknya lalu dihapus permanen,
+        // kasade menabrak restrictOnDelete, dan admin mendapat 500.
         if ($record instanceof Subject) {
             return Attendance::query()
-                ->whereHas('schedule', fn ($query) => $query->where('subject_id', $record->id))
+                ->whereHas('schedule', fn ($query) => $query->withTrashed()->where('subject_id', $record->id))
                 ->exists();
         }
 
         if ($record instanceof SchoolClass) {
             return Attendance::query()
-                ->whereHas('schedule', fn ($query) => $query->where('class_id', $record->id))
-                ->orWhereHas('student', fn ($query) => $query->where('class_id', $record->id))
+                ->whereHas('schedule', fn ($query) => $query->withTrashed()->where('class_id', $record->id))
+                ->orWhereHas('student', fn ($query) => $query->withTrashed()->where('class_id', $record->id))
                 ->exists();
         }
 
@@ -78,7 +82,7 @@ final class MasterDeletion
             return Attendance::query()
                 ->where('recorded_by', $record->id)
                 ->orWhere('updated_by', $record->id)
-                ->orWhereHas('schedule', fn ($query) => $query->where('teacher_id', $record->id))
+                ->orWhereHas('schedule', fn ($query) => $query->withTrashed()->where('teacher_id', $record->id))
                 ->exists();
         }
 

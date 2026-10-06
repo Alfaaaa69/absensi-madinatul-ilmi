@@ -213,4 +213,95 @@ class MasterDeletionTest extends TestCase
         $this->assertDatabaseHas('schedules', ['id' => $jadwal->id]);
         $this->assertDatabaseHas('attendances', ['id' => $absensi->id]);
     }
+
+    // --- Anak ter-arsip -------------------------------------------------
+    //
+    // Anak yang sudah punya absensi ikut terarsip, bukan hilang. Deteksi
+    // riwayat tidak boleh menyembunyikan anak ter-arsip: kalau dilewati,
+    // induknya dihapus permanen lalu kasade menabrak restrictOnDelete.
+
+    public function test_mapel_dengan_jadwal_terarsip_berabsensi_diarsipkan(): void
+    {
+        $jadwal = Schedule::factory()->create();
+        $mapel = $jadwal->subject;
+        $siswa = Student::factory()->create(['class_id' => $jadwal->class_id]);
+        $absensi = Attendance::factory()->create([
+            'schedule_id' => $jadwal->id,
+            'student_id' => $siswa->id,
+        ]);
+
+        $jadwal->delete();
+
+        $hasil = $this->delesi()->hapus($mapel);
+
+        $this->assertSame(HasilHapus::Diarsipkan, $hasil);
+        $this->assertSoftDeleted('subjects', ['id' => $mapel->id]);
+        $this->assertSoftDeleted('schedules', ['id' => $jadwal->id]);
+        $this->assertDatabaseHas('attendances', ['id' => $absensi->id]);
+    }
+
+    public function test_kelas_dengan_siswa_terarsip_berabsensi_diarsipkan(): void
+    {
+        $absensi = Attendance::factory()->create();
+        $siswa = $absensi->student;
+        $kelas = $siswa->schoolClass;
+
+        // Jadwalnya dipindahkan ke kelas lain supaya jalur `schedule` tidak
+        // ikut menangkap. Yang diuji murni jalur `student`.
+        $absensi->schedule->update(['class_id' => SchoolClass::factory()->create()->id]);
+
+        $siswa->delete();
+
+        $hasil = $this->delesi()->hapus($kelas);
+
+        $this->assertSame(HasilHapus::Diarsipkan, $hasil);
+        $this->assertSoftDeleted('classes', ['id' => $kelas->id]);
+        $this->assertSoftDeleted('students', ['id' => $siswa->id]);
+        $this->assertDatabaseHas('attendances', ['id' => $absensi->id]);
+    }
+
+    public function test_kelas_dengan_jadwal_terarsip_berabsensi_diarsipkan(): void
+    {
+        $jadwal = Schedule::factory()->create();
+        $kelas = $jadwal->schoolClass;
+        $siswa = Student::factory()->create(['class_id' => $jadwal->class_id]);
+        $absensi = Attendance::factory()->create([
+            'schedule_id' => $jadwal->id,
+            'student_id' => $siswa->id,
+        ]);
+
+        // Siswanya dipindahkan ke kelas lain supaya jalur `student` tidak
+        // ikut menangkap. Yang diuji murni jalur `schedule`.
+        $siswa->update(['class_id' => SchoolClass::factory()->create()->id]);
+
+        $jadwal->delete();
+
+        $hasil = $this->delesi()->hapus($kelas);
+
+        $this->assertSame(HasilHapus::Diarsipkan, $hasil);
+        $this->assertSoftDeleted('classes', ['id' => $kelas->id]);
+        $this->assertSoftDeleted('schedules', ['id' => $jadwal->id]);
+        $this->assertDatabaseHas('attendances', ['id' => $absensi->id]);
+    }
+
+    public function test_guru_dengan_jadwal_terarsip_berabsensi_diarsipkan(): void
+    {
+        $guru = User::factory()->guru()->create();
+        $jadwal = Schedule::factory()->create(['teacher_id' => $guru->id]);
+        $siswa = Student::factory()->create(['class_id' => $jadwal->class_id]);
+        $absensi = Attendance::factory()->create([
+            'schedule_id' => $jadwal->id,
+            'student_id' => $siswa->id,
+            'recorded_by' => User::factory()->guru()->create()->id,
+        ]);
+
+        $jadwal->delete();
+
+        $hasil = $this->delesi()->hapus($guru);
+
+        $this->assertSame(HasilHapus::Diarsipkan, $hasil);
+        $this->assertSoftDeleted('users', ['id' => $guru->id]);
+        $this->assertSoftDeleted('schedules', ['id' => $jadwal->id]);
+        $this->assertDatabaseHas('attendances', ['id' => $absensi->id]);
+    }
 }
