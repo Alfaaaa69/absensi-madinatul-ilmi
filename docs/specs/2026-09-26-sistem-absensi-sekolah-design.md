@@ -363,6 +363,11 @@ Test memakai SQLite in-memory, bukan MySQL. Konsekuensinya: test yang bergantung
 
 - Pilih "Juli" saat tahun ajaran aktif mulai Agustus → error, bukan tabel kosong
 - Rekap bulanan hanya menghitung tanggal dalam rentang tahun ajaran
+- Rekap tidak menghitung absensi bertanggal mendatang. Admin boleh mengisi
+  tanggal yang belum terjadi, tapi rekap bulan berjalan hanya menghitung sampai
+  hari ini, supaya laporan yang dicetak tengah bulan tidak menunjukkan alpa
+  untuk hari yang belum terjadi. Matriks dan drill-down siswa memakai batas atas
+  yang sama.
 
 ### Tier 4 — Livewire smoke (`Livewire::test()`)
 

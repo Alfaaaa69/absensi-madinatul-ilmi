@@ -132,4 +132,51 @@ class SidebarTest extends TestCase
             ->assertSee(route('logout'), escape: false)
             ->assertSee('Keluar');
     }
+
+    /**
+     * Tanpa link ini fitur rekap hanya bisa dibuka dengan mengetik URL. Guru
+     * yang baru login tidak punya cara lain untuk mencapainya.
+     */
+    public function test_link_rekap_ada_untuk_guru_dan_admin(): void
+    {
+        $guru = User::factory()->guru()->create(['is_active' => true]);
+
+        $this->actingAs($guru)
+            ->get('/halaman-uji-sidebar')
+            ->assertOk()
+            ->assertSee('Rekap Absensi')
+            ->assertSee(route('rekap.index'), escape: false);
+
+        $admin = User::factory()->admin()->create(['is_active' => true]);
+
+        $this->actingAs($admin)
+            ->get('/halaman-uji-sidebar')
+            ->assertOk()
+            ->assertSee(route('rekap.index'), escape: false);
+    }
+
+    public function test_link_jadwal_saya_ada_untuk_guru(): void
+    {
+        $guru = User::factory()->guru()->create(['is_active' => true]);
+
+        $this->actingAs($guru)
+            ->get('/halaman-uji-sidebar')
+            ->assertOk()
+            ->assertSee(route('jadwal.index'), escape: false);
+    }
+
+    /**
+     * Admin mengelola jadwal lewat menu Data Master, bukan lewat daftar jadwal
+     * miliknya sendiri, jadi "Jadwal Saya" tidak relevan untuknya.
+     */
+    public function test_admin_tidak_melihat_link_jadwal_saya(): void
+    {
+        $admin = User::factory()->admin()->create(['is_active' => true]);
+
+        $this->actingAs($admin)
+            ->get('/halaman-uji-sidebar')
+            ->assertOk()
+            ->assertDontSee(route('jadwal.index'), escape: false)
+            ->assertDontSee('Jadwal Saya');
+    }
 }

@@ -1,52 +1,52 @@
 <div class="space-y-6">
-    <h1 class="text-lg font-semibold text-gray-900">Kelas</h1>
+    <h1 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Kelas</h1>
 
     @if (session('sukses'))
-        <div class="rounded-md bg-green-50 px-4 py-3 text-sm text-green-800">{{ session('sukses') }}</div>
+        <div class="rounded-md bg-green-50 px-4 py-3 text-sm text-green-800 dark:text-green-200 dark:bg-green-400/10">{{ session('sukses') }}</div>
     @endif
 
     <div class="grid gap-6 lg:grid-cols-3">
-        <form wire:submit="save" class="space-y-3 rounded-lg border border-gray-200 bg-white p-4">
-            <h2 class="font-medium text-gray-900">
+        <form wire:submit="save" class="space-y-3 rounded-lg border border-gray-200 bg-white p-4 dark:bg-zinc-900 dark:border-zinc-800">
+            <h2 class="font-medium text-gray-900 dark:text-gray-100">
                 {{ $editingId === null ? 'Tambah Kelas' : 'Ubah Kelas' }}
             </h2>
 
             <label class="block text-sm">
-                <span class="text-gray-700">Tahun Ajaran</span>
-                <select wire:model="academic_year_id" class="mt-1 w-full rounded border-gray-300">
+                <span class="text-gray-700 dark:text-gray-300">Tahun Ajaran</span>
+                <select wire:model="academic_year_id" class="mt-1 w-full rounded border border-gray-300 dark:border-zinc-700">
                     @foreach ($tahunAjaran as $tahun)
                         <option value="{{ $tahun->id }}">{{ $tahun->name }} ({{ ucfirst($tahun->period->value) }})</option>
                     @endforeach
                 </select>
-                @error('academic_year_id') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                @error('academic_year_id') <span class="text-xs text-red-600 dark:text-red-300">{{ $message }}</span> @enderror
             </label>
 
             <label class="block text-sm">
-                <span class="text-gray-700">Nama Kelas</span>
+                <span class="text-gray-700 dark:text-gray-300">Nama Kelas</span>
                 <input type="text" wire:model="name" placeholder="VII-A"
-                    class="mt-1 w-full rounded border-gray-300" />
-                @error('name') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                    class="mt-1 w-full rounded border border-gray-300 dark:border-zinc-700" />
+                @error('name') <span class="text-xs text-red-600 dark:text-red-300">{{ $message }}</span> @enderror
             </label>
 
             <label class="block text-sm">
-                <span class="text-gray-700">Tingkat</span>
-                <select wire:model="grade_level" class="mt-1 w-full rounded border-gray-300">
+                <span class="text-gray-700 dark:text-gray-300">Tingkat</span>
+                <select wire:model="grade_level" class="mt-1 w-full rounded border border-gray-300 dark:border-zinc-700">
                     @foreach ([7, 8, 9] as $tingkat)
                         <option value="{{ $tingkat }}">Kelas {{ $tingkat }}</option>
                     @endforeach
                 </select>
-                @error('grade_level') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                @error('grade_level') <span class="text-xs text-red-600 dark:text-red-300">{{ $message }}</span> @enderror
             </label>
 
             <label class="block text-sm">
-                <span class="text-gray-700">Wali Kelas</span>
-                <select wire:model="homeroom_teacher_id" class="mt-1 w-full rounded border-gray-300">
+                <span class="text-gray-700 dark:text-gray-300">Wali Kelas</span>
+                <select wire:model="homeroom_teacher_id" class="mt-1 w-full rounded border border-gray-300 dark:border-zinc-700">
                     <option value="">Belum ditentukan</option>
                     @foreach ($waliTersedia as $wali)
                         <option value="{{ $wali->id }}">{{ $wali->name }}</option>
                     @endforeach
                 </select>
-                @error('homeroom_teacher_id') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                @error('homeroom_teacher_id') <span class="text-xs text-red-600 dark:text-red-300">{{ $message }}</span> @enderror
             </label>
 
             <div class="flex gap-2">
@@ -56,14 +56,14 @@
         </form>
 
         <div class="lg:col-span-2 space-y-3">
-            <label class="flex items-center gap-2 text-sm text-gray-700">
+            <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
                 <input type="checkbox" wire:click="toggleArsip" />
                 Tampilkan yang diarsipkan
             </label>
 
-            <div class="overflow-x-auto rounded-lg border border-gray-200 bg-white">
+            <div class="overflow-x-auto rounded-lg border border-gray-200 bg-white dark:bg-zinc-900 dark:border-zinc-800">
                 <table class="min-w-full text-sm">
-                    <thead class="bg-gray-50 text-left text-xs uppercase text-gray-500">
+                    <thead class="bg-gray-50 text-left text-xs uppercase text-gray-500 dark:text-gray-400 dark:bg-zinc-800/50">
                         <tr>
                             <th class="px-4 py-2">Kelas</th>
                             <th class="px-4 py-2">Tahun Ajaran</th>
@@ -74,11 +74,11 @@
                     </thead>
                     <tbody>
                         @forelse ($daftar as $kelas)
-                            <tr class="border-t border-gray-100">
+                            <tr class="border-t border-gray-100 dark:border-zinc-800">
                                 <td class="px-4 py-2">
                                     {{ $kelas->name }}
                                     @if ($kelas->trashed())
-                                        <span class="ml-2 rounded bg-gray-100 px-2 py-1 text-xs text-gray-600">Diarsipkan</span>
+                                        <span class="ml-2 rounded bg-gray-100 px-2 py-1 text-xs text-gray-600 dark:text-gray-400 dark:bg-zinc-800">Diarsipkan</span>
                                     @endif
                                 </td>
                                 <td class="px-4 py-2">{{ $kelas->academicYear?->name }}</td>
@@ -87,17 +87,17 @@
                                 </td>
                                 <td class="px-4 py-2">{{ $kelas->students_count }}</td>
                                 <td class="px-4 py-2 text-right">
-                                    <button wire:click="editForm('{{ $kelas->id }}')" class="text-sm text-blue-700">Ubah</button>
+                                    <button wire:click="editForm('{{ $kelas->id }}')" class="text-sm text-blue-700 dark:text-blue-300">Ubah</button>
                                     @if ($kelas->trashed())
-                                        <button wire:click="pulihkan('{{ $kelas->id }}')" class="ml-2 text-sm text-green-700">Pulihkan</button>
+                                        <button wire:click="pulihkan('{{ $kelas->id }}')" class="ml-2 text-sm text-green-700 dark:text-green-300">Pulihkan</button>
                                     @else
-                                        <button wire:click="arsipkan('{{ $kelas->id }}')" class="ml-2 text-sm text-red-700">Arsipkan</button>
+                                        <button wire:click="askDelete('{{ $kelas->id }}')" class="ml-2 text-sm text-red-700 dark:text-red-300">{{ $kelas->memiliki_riwayat ? 'Arsipkan' : 'Hapus' }}</button>
                                     @endif
                                 </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="5" class="px-4 py-6 text-center text-gray-500">
+                                <td colspan="5" class="px-4 py-6 text-center text-gray-500 dark:text-gray-400">
                                     Belum ada kelas pada tahun ajaran ini.
                                 </td>
                             </tr>
@@ -107,4 +107,22 @@
             </div>
         </div>
     </div>
+
+    @if ($pendingDeleteId !== null)
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+            <div class="w-full max-w-md rounded-lg border border-gray-200 bg-white p-6 dark:bg-zinc-900 dark:border-zinc-800">
+                <h2 class="font-medium text-gray-900 dark:text-gray-100">
+                    {{ $pendingDeletePermanent ? 'Hapus Permanen' : 'Arsipkan' }} — {{ $pendingDeleteName }}
+                </h2>
+                <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">{{ $pendingDeleteMessage }}</p>
+                <div class="mt-5 flex justify-end gap-2">
+                    <button type="button" wire:click="cancelDelete"
+                        class="rounded border border-gray-300 px-3 py-2 text-sm dark:border-zinc-700">Batal</button>
+                    <button type="button" wire:click="confirmDelete" class="rounded bg-red-700 px-3 py-2 text-sm text-white">
+                        {{ $pendingDeletePermanent ? 'Hapus Permanen' : 'Arsipkan' }}
+                    </button>
+                </div>
+            </div>
+        </div>
+    @endif
 </div>

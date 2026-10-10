@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\DayOfWeek;
+use App\Enums\HasilHapus;
 use App\Models\Schedule;
 use App\Models\User;
 use App\Support\ScheduleConflictDetector;
@@ -10,7 +11,10 @@ use Illuminate\Validation\ValidationException;
 
 final class ScheduleManager
 {
-    public function __construct(private readonly ScheduleConflictDetector $detector) {}
+    public function __construct(
+        private readonly ScheduleConflictDetector $detector,
+        private readonly MasterDeletion $deletion,
+    ) {}
 
     /**
      * @param  array{class_id: string, subject_id: string, teacher_id: string, day_of_week: string, start_time: string, end_time: string}  $data
@@ -49,9 +53,9 @@ final class ScheduleManager
         return $jadwal;
     }
 
-    public function arsipkan(Schedule $schedule): void
+    public function hapus(Schedule $schedule): HasilHapus
     {
-        $schedule->delete();
+        return $this->deletion->hapus($schedule);
     }
 
     public function pulihkan(Schedule $schedule): void

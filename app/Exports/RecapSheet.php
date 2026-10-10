@@ -2,6 +2,7 @@
 
 namespace App\Exports;
 
+use App\Enums\AttendanceStatus;
 use App\Models\AcademicYear;
 use App\Models\SchoolClass;
 use App\Models\Student;
@@ -35,10 +36,20 @@ class RecapSheet implements FromArray, WithStyles, WithTitle
      */
     public function array(): array
     {
+        // Batas data ditulis di dalam sel Periode, bukan sebagai baris baru:
+        // `BARIS_META` dipakai untuk menebalkan baris header, dan menambah
+        // baris di sini akan menggeser posisi itu.
+        $periode = $this->result->period->label();
+        $catatanBatas = $this->result->period->countedThroughNote();
+
+        if ($catatanBatas !== null) {
+            $periode .= ' ('.$catatanBatas.')';
+        }
+
         $baris = [
             ['LAPORAN KEHADIRAN SISWA'],
             ['Tahun Ajaran', $this->tahun->name ?? '-'],
-            ['Periode', $this->result->period->label()],
+            ['Periode', $periode],
             ['Kelas', $this->result->classes->pluck('name')->implode(', ') ?: '-'],
             [''],
         ];
@@ -63,11 +74,17 @@ class RecapSheet implements FromArray, WithStyles, WithTitle
             );
         }
 
+        // Baris ini ditambahkan setelah header, bukan di area metadata, supaya
+        // posisi `BARIS_META` tidak bergeser.
+        if (! $this->result->hasData()) {
+            $baris[] = ['', '', '', '', 'Tidak ada data absensi pada periode ini.'];
+        }
+
         $baris[] = [''];
         $baris[] = ['RINGKASAN', '', '', ''];
 
-        foreach (['hadir', 'izin', 'sakit', 'alpa'] as $status) {
-            $baris[] = [ucfirst($status), $this->result->summary[$status]];
+        foreach (AttendanceStatus::cases() as $status) {
+            $baris[] = [$status->label(), $this->result->summary[$status->value]];
         }
 
         return $baris;
@@ -95,7 +112,10 @@ class RecapSheet implements FromArray, WithStyles, WithTitle
             $header[] = $mapel->name;
         }
 
-        return array_merge($header, ['Hadir', 'Izin', 'Sakit', 'Alpa']);
+        return array_merge($header, array_map(
+            static fn (AttendanceStatus $status): string => $status->label(),
+            AttendanceStatus::cases(),
+        ));
     }
 
     /**

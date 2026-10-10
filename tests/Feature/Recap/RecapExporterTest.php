@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Recap;
 
+use App\Exports\RecapSheet;
 use App\Models\AcademicYear;
 use App\Models\Schedule;
 use App\Models\SchoolClass;
@@ -11,6 +12,7 @@ use App\Recap\RecapExporter;
 use App\Recap\RecapPeriod;
 use App\Recap\RecapResult;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Tests\TestCase;
 use ZipArchive;
 
@@ -75,12 +77,88 @@ class RecapExporterTest extends TestCase
         $this->assertStringContainsString($hasil->period->label(), $html);
     }
 
-    public function test_nama_berkas_memuat_rentang_periode(): void
+    /**
+     * Rentang di nama berkas adalah rentang yang benar-benar dihitung, bukan
+     * periode penuh. Kalau memakai `$period->end`, laporan September yang diunduh
+     * tanggal 15 dan tanggal 30 punya nama sama tapi isi berbeda - yang kedua
+     * menimpa yang pertama tanpa jejak.
+     */
+    public function test_nama_berkas_memuat_rentang_yang_dihitung(): void
     {
+        Carbon::setTestNow(Carbon::parse('2025-09-15'));
+
         $hasil = $this->hasil();
         $exporter = app(RecapExporter::class);
 
-        $this->assertSame('rekap-absensi-2025-09-01-2025-09-30.xlsx', $exporter->excelFilename($hasil));
-        $this->assertSame('rekap-absensi-2025-09-01-2025-09-30.pdf', $exporter->pdfFilename($hasil));
+        $this->assertSame('2025-09-15', $hasil->period->countedEnd()?->toDateString());
+
+        $this->assertSame('rekap-absensi-2025-09-01-2025-09-15.xlsx', $exporter->excelFilename($hasil));
+        $this->assertSame('rekap-absensi-2025-09-01-2025-09-15.pdf', $exporter->pdfFilename($hasil));
+    }
+
+    public function test_nama_berkas_berbeda_untuk_dua_snapshot_periode_yang_sama(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2025-09-15'));
+
+        $hasil = $this->hasil();
+        $exporter = app(RecapExporter::class);
+
+        $pertama = $exporter->excelFilename($hasil);
+
+        Carbon::setTestNow(Carbon::parse('2025-09-20'));
+
+        $kedua = $exporter->excelFilename($hasil);
+
+        $this->assertNotSame($pertama, $kedua, 'Snapshot berbeda harus punya nama berkas berbeda.');
+        $this->assertSame('rekap-absensi-2025-09-01-2025-09-20.xlsx', $kedua);
+    }
+
+    public function test_nama_berkas_memakai_rentang_penuh_saat_periode_sudah_selesai(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2025-10-01'));
+
+        $hasil = $this->hasil();
+
+        $this->assertSame('rekap-absensi-2025-09-01-2025-09-30.xlsx', app(RecapExporter::class)->excelFilename($hasil));
+    }
+
+    /**
+     * Prefiks berasal dari `.env`, jadi bisa berisi apa saja yang diketik admin.
+     * Nilai kosong atau berisi `/` tidak boleh sampai jadi nama berkas.
+     */
+    public function test_excel_memakai_label_status_alfa(): void
+    {
+        $baris = RecapSheet::for($this->hasil(), null)->array();
+
+        // Baris ke-6 (indeks 5) adalah header kolom: No, NISN, ..., Alfa.
+        $this->assertContains('Alfa', $baris[5]);
+        $this->assertNotContains('Alpa', $baris[5]);
+
+        // Baris RINGKASAN memakai label status sebagai sel pertama.
+        $label = array_map(static fn (array $b): mixed => $b[0] ?? null, $baris);
+
+        $this->assertContains('Alfa', $label);
+        $this->assertNotContains('Alpa', $label);
+    }
+
+    public function test_view_cetak_memakai_label_status_alfa(): void
+    {
+        $html = view('recap.print', ['result' => $this->hasil(), 'tahun' => null])->render();
+
+        $this->assertStringContainsString('Alfa', $html);
+    }
+
+    public function test_prefiks_berkarakter_aneh_dibersihkan(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2025-09-15'));
+
+        $hasil = $this->hasil();
+        $exporter = app(RecapExporter::class);
+
+        config(['rekap.file_prefix' => 'laporan absensi/../../etc']);
+        $this->assertSame('laporan-absensi-etc-2025-09-01-2025-09-15.xlsx', $exporter->excelFilename($hasil));
+
+        config(['rekap.file_prefix' => '  ']);
+        $this->assertSame('rekap-absensi-2025-09-01-2025-09-15.xlsx', $exporter->excelFilename($hasil));
     }
 }

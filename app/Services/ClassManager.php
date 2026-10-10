@@ -2,12 +2,15 @@
 
 namespace App\Services;
 
+use App\Enums\HasilHapus;
 use App\Models\SchoolClass;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 final class ClassManager
 {
+    public function __construct(private readonly MasterDeletion $deletion) {}
+
     /**
      * @param  array{academic_year_id: string, name: string, grade_level: string|int, homeroom_teacher_id: string|null}  $data
      */
@@ -37,17 +40,12 @@ final class ClassManager
     }
 
     /**
-     * Mengarsipkan kelas dan mengembalikan jumlah siswa yang menempel,
-     * supaya komponen bisa memperingatkan tanpa query kedua.
+     * Kelas tanpa riwayat absensi dihapus permanen beserta siswa dan
+     * jadwalnya. Kalau ada riwayat, kelasnya diarsipkan.
      */
-    public function arsipkan(SchoolClass $schoolClass): int
+    public function hapus(SchoolClass $schoolClass): HasilHapus
     {
-        return (int) DB::transaction(function () use ($schoolClass) {
-            $jumlahSiswa = $schoolClass->students()->count();
-            $schoolClass->delete();
-
-            return $jumlahSiswa;
-        });
+        return $this->deletion->hapus($schoolClass);
     }
 
     public function pulihkan(SchoolClass $schoolClass): void

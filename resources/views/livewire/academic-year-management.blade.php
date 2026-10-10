@@ -1,48 +1,48 @@
 <div class="space-y-6">
-    <h1 class="text-lg font-semibold text-gray-900">Tahun Ajaran</h1>
+    <h1 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Tahun Ajaran</h1>
 
     @if (session('sukses'))
-        <div class="rounded-md bg-green-50 px-4 py-3 text-sm text-green-800">
+        <div class="rounded-md bg-green-50 px-4 py-3 text-sm text-green-800 dark:text-green-200 dark:bg-green-400/10">
             {{ session('sukses') }}
         </div>
     @endif
 
     <div class="grid gap-6 lg:grid-cols-3">
-        <form wire:submit="save" class="space-y-3 rounded-lg border border-gray-200 bg-white p-4">
-            <h2 class="font-medium text-gray-900">
+        <form wire:submit="save" class="space-y-3 rounded-lg border border-gray-200 bg-white p-4 dark:bg-zinc-900 dark:border-zinc-800">
+            <h2 class="font-medium text-gray-900 dark:text-gray-100">
                 {{ $editingId === null ? 'Tambah Tahun Ajaran' : 'Ubah Tahun Ajaran' }}
             </h2>
 
             <label class="block text-sm">
-                <span class="text-gray-700">Nama Tahun Ajaran</span>
+                <span class="text-gray-700 dark:text-gray-300">Nama Tahun Ajaran</span>
                 <input type="text" wire:model="name" placeholder="2025/2026"
-                    class="mt-1 w-full rounded border-gray-300" />
-                @error('name') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                    class="mt-1 w-full rounded border border-gray-300 dark:border-zinc-700" />
+                @error('name') <span class="text-xs text-red-600 dark:text-red-300">{{ $message }}</span> @enderror
             </label>
 
             <label class="block text-sm">
-                <span class="text-gray-700">Periode</span>
-                <select wire:model="period" class="mt-1 w-full rounded border-gray-300">
+                <span class="text-gray-700 dark:text-gray-300">Periode</span>
+                <select wire:model="period" class="mt-1 w-full rounded border border-gray-300 dark:border-zinc-700">
                     @foreach ($periode as $item)
                         <option value="{{ $item->value }}">{{ ucfirst($item->value) }}</option>
                     @endforeach
                 </select>
-                @error('period') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                @error('period') <span class="text-xs text-red-600 dark:text-red-300">{{ $message }}</span> @enderror
             </label>
 
             <label class="block text-sm">
-                <span class="text-gray-700">Mulai</span>
-                <input type="date" wire:model="start_date" class="mt-1 w-full rounded border-gray-300" />
-                @error('start_date') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                <span class="text-gray-700 dark:text-gray-300">Mulai</span>
+                <input type="date" wire:model="start_date" class="mt-1 w-full rounded border border-gray-300 dark:border-zinc-700" />
+                @error('start_date') <span class="text-xs text-red-600 dark:text-red-300">{{ $message }}</span> @enderror
             </label>
 
             <label class="block text-sm">
-                <span class="text-gray-700">Selesai</span>
-                <input type="date" wire:model="end_date" class="mt-1 w-full rounded border-gray-300" />
-                @error('end_date') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                <span class="text-gray-700 dark:text-gray-300">Selesai</span>
+                <input type="date" wire:model="end_date" class="mt-1 w-full rounded border border-gray-300 dark:border-zinc-700" />
+                @error('end_date') <span class="text-xs text-red-600 dark:text-red-300">{{ $message }}</span> @enderror
             </label>
 
-            <label class="flex items-center gap-2 text-sm text-gray-700">
+            <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
                 <input type="checkbox" wire:model="is_active" />
                 Jadikan tahun ajaran aktif
             </label>
@@ -53,9 +53,9 @@
             </div>
         </form>
 
-        <div class="lg:col-span-2 overflow-x-auto rounded-lg border border-gray-200 bg-white">
+        <div class="lg:col-span-2 overflow-x-auto rounded-lg border border-gray-200 bg-white dark:bg-zinc-900 dark:border-zinc-800">
             <table class="min-w-full text-sm">
-                <thead class="bg-gray-50 text-left text-xs uppercase text-gray-500">
+                <thead class="bg-gray-50 text-left text-xs uppercase text-gray-500 dark:text-gray-400 dark:bg-zinc-800/50">
                     <tr>
                         <th class="px-4 py-2">Nama</th>
                         <th class="px-4 py-2">Periode</th>
@@ -66,7 +66,7 @@
                 </thead>
                 <tbody>
                     @forelse ($tahunAjaran as $tahun)
-                        <tr class="border-t border-gray-100">
+                        <tr class="border-t border-gray-100 dark:border-zinc-800">
                             <td class="px-4 py-2">{{ $tahun->name }}</td>
                             <td class="px-4 py-2">{{ ucfirst($tahun->period->value) }}</td>
                             <td class="px-4 py-2">
@@ -74,21 +74,21 @@
                             </td>
                             <td class="px-4 py-2">
                                 @if ($tahun->is_active)
-                                    <span class="rounded bg-green-100 px-2 py-1 text-xs text-green-800">Aktif</span>
+                                    <span class="rounded bg-green-100 px-2 py-1 text-xs text-green-800 dark:text-green-200 dark:bg-green-400/20">Aktif</span>
                                 @else
-                                    <span class="rounded bg-gray-100 px-2 py-1 text-xs text-gray-600">Nonaktif</span>
+                                    <span class="rounded bg-gray-100 px-2 py-1 text-xs text-gray-600 dark:text-gray-400 dark:bg-zinc-800">Nonaktif</span>
                                 @endif
                             </td>
                             <td class="px-4 py-2 text-right">
-                                <button wire:click="editForm('{{ $tahun->id }}')" class="text-sm text-blue-700">Ubah</button>
-                                <button wire:click="setActive('{{ $tahun->id }}')" class="ml-2 text-sm text-gray-700">
+                                <button wire:click="editForm('{{ $tahun->id }}')" class="text-sm text-blue-700 dark:text-blue-300">Ubah</button>
+                                <button wire:click="setActive('{{ $tahun->id }}')" class="ml-2 text-sm text-gray-700 dark:text-gray-300">
                                     {{ $tahun->is_active ? 'Nonaktifkan' : 'Aktifkan' }}
                                 </button>
                             </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="5" class="px-4 py-6 text-center text-gray-500">
+                            <td colspan="5" class="px-4 py-6 text-center text-gray-500 dark:text-gray-400">
                                 Belum ada tahun ajaran. Tambahkan satu sebelum membuat kelas.
                             </td>
                         </tr>

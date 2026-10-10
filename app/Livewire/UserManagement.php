@@ -2,13 +2,17 @@
 
 namespace App\Livewire;
 
+use App\Enums\HasilHapus;
 use App\Enums\UserRole;
 use App\Exceptions\LastActiveAdminException;
+use App\Livewire\Concerns\ConfirmableDeletion;
+use App\Models\Attendance;
 use App\Models\User;
 use App\Services\UserService;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -17,7 +21,20 @@ use Livewire\WithPagination;
 #[Layout('layouts.app')]
 class UserManagement extends Component
 {
-    use WithPagination;
+    use ConfirmableDeletion, WithPagination;
+
+    public const DELETE_MODAL = 'hapus-user';
+
+    public ?string $editingId = null;
+
+    /**
+     * Flux mencocokkan nama modal saat membuka <dialog>. Nama yang sama dipakai
+     * di view sebagai atribut name, jadi keduanya didefinisikan di sini supaya
+     * tidak bisa berbeda tanpa sengaja.
+     */
+    public const FORM_MODAL = 'form-user';
+
+    public const RESET_MODAL = 'reset-password';
 
     public string $search = '';
 
@@ -31,6 +48,8 @@ class UserManagement extends Component
     ];
 
     public bool $showForm = false;
+
+    public bool $showArchived = false;
 
     public string $password = '';
 
@@ -71,6 +90,8 @@ class UserManagement extends Component
         $this->password_confirmation = '';
         $this->showForm = true;
         $this->clearValidation();
+
+        $this->dispatch('modal-show', name: self::FORM_MODAL);
     }
 
     public function edit(string $id): void
@@ -91,6 +112,8 @@ class UserManagement extends Component
         $this->password_confirmation = '';
         $this->showForm = true;
         $this->clearValidation();
+
+        $this->dispatch('modal-show', name: self::FORM_MODAL);
     }
 
     public function cancelForm(): void
@@ -173,17 +196,77 @@ class UserManagement extends Component
         }
     }
 
-    public function delete(string $id, UserService $service): void
+    public function confirmDelete(): void
     {
-        $target = User::findOrFail($id);
+        if ($this->pendingDeleteId === null) {
+            return;
+        }
+
+        $target = User::findOrFail($this->pendingDeleteId);
 
         $this->authorize('delete', $target);
 
         try {
-            $service->delete($this->actor(), $target);
+            $hasil = app(UserService::class)->delete($this->actor(), $target);
         } catch (LastActiveAdminException $exception) {
             $this->dispatch('toast', type: 'danger', message: $exception->getMessage());
+            $this->cancelDelete();
+
+            return;
         }
+
+        $this->dispatch('toast', type: 'success', message: $hasil === HasilHapus::Permanen
+            ? 'Akun dihapus permanen beserta jadwal mengajarnya.'
+            : 'Akun diarsipkan karena masih punya riwayat absensi.');
+
+        $this->cancelDelete();
+    }
+
+    protected function deletableRecord(string $id): User
+    {
+        return User::findOrFail($id);
+    }
+
+    /**
+     * @param  User  $record
+     */
+    protected function deletableDescription(Model $record): string
+    {
+        return $record->name;
+    }
+
+    /**
+     * @param  User  $record
+     */
+    protected function permanentDeleteMessage(Model $record): string
+    {
+        return "Akun {$record->name} dihapus permanen beserta jadwal mengajarnya.";
+    }
+
+    /**
+     * @param  User  $record
+     */
+    protected function archiveDeleteMessage(Model $record): string
+    {
+        return "Akun {$record->name} diarsipkan, bukan dihapus permanen — masih dipakai riwayat absensi yang harus tetap terbaca.";
+    }
+
+    public function toggleArsip(): void
+    {
+        $this->showArchived = ! $this->showArchived;
+
+        $this->resetPage();
+    }
+
+    public function pulihkan(string $id, UserService $service): void
+    {
+        $user = User::withTrashed()->findOrFail($id);
+
+        $this->authorize('update', $user);
+
+        $service->pulihkan($user);
+
+        $this->dispatch('toast', type: 'success', message: "{$user->name} dipulihkan.");
     }
 
     public function startReset(string $id): void
@@ -197,6 +280,8 @@ class UserManagement extends Component
         $this->password = '';
         $this->password_confirmation = '';
         $this->clearValidation();
+
+        $this->dispatch('modal-show', name: self::RESET_MODAL);
     }
 
     public function cancelReset(): void
@@ -229,6 +314,17 @@ class UserManagement extends Component
     {
         return view('livewire.user-management', [
             'users' => User::query()
+                // Label tombol hapus per baris: "Arsipkan" kalau akun masih
+                // dipakai riwayat absensi, "Hapus" kalau bersih.
+                ->addSelect(['memiliki_riwayat' => Attendance::query()
+                    ->selectRaw('1')
+                    ->where(function (Builder $query): void {
+                        $query->whereColumn('attendances.recorded_by', 'users.id')
+                            ->orWhereColumn('attendances.updated_by', 'users.id')
+                            ->orWhereHas('schedule', fn ($q) => $q->withTrashed()->whereColumn('schedules.teacher_id', 'users.id'));
+                    })
+                    ->limit(1)])
+                ->when($this->showArchived, fn (Builder $query) => $query->withTrashed())
                 ->when($this->search !== '', function (Builder $query): void {
                     $query->where(function (Builder $inner): void {
                         $inner->where('name', 'like', '%'.$this->search.'%')
