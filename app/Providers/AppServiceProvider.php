@@ -91,7 +91,9 @@ class AppServiceProvider extends ServiceProvider
                 $tabs[] = ['label' => 'Kelas Saya', 'component' => 'homeroom-class-recap'];
             }
 
-            $tabs[] = ['label' => 'Mapel Saya', 'component' => 'teacher-subject-recap'];
+            if ($user instanceof User && ! $user->isAdmin()) {
+                $tabs[] = ['label' => 'Mapel Saya', 'component' => 'teacher-subject-recap'];
+            }
 
             if ($user instanceof User && $user->isAdmin()) {
                 $tabs[] = ['label' => 'Semua Absensi', 'component' => 'admin-attendance-report'];

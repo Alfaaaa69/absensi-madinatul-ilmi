@@ -61,7 +61,7 @@ class HomeroomClassRecap extends Component
             'hadir' => 'Hadir',
             'izin' => 'Izin',
             'sakit' => 'Sakit',
-            default => 'Alpa',
+            default => 'Alfa',
         };
     }
 

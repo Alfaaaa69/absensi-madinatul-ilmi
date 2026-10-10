@@ -61,7 +61,7 @@
                     </button>
                     <button type="button" wire:click="tandaiSemua('alpa')"
                             class="rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50 dark:text-zinc-200 dark:bg-zinc-900 dark:border-zinc-700 dark:hover:bg-zinc-800">
-                        Tandai Semua Alpa
+                        Tandai Semua Alfa
                     </button>
                 </div>
 
@@ -85,7 +85,7 @@
                                         <select wire:model.live="status.{{ $id }}"
                                                 class="rounded-lg border border-zinc-300 text-sm text-zinc-900 dark:text-zinc-100 dark:border-zinc-700">
                                             @foreach (\App\Enums\AttendanceStatus::cases() as $opsi)
-                                                <option value="{{ $opsi->value }}" @selected($opsi->value === ($status[$id] ?? null))>{{ ucfirst($opsi->value) }}</option>
+                                                <option value="{{ $opsi->value }}" @selected($opsi->value === ($status[$id] ?? null))>{{ $opsi->label() }}</option>
                                             @endforeach
                                         </select>
                                         @error("status.{{ $id }}")

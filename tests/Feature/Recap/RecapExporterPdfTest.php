@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Recap;
 
+use App\Enums\AttendanceStatus;
 use App\Exports\RecapSheet;
 use App\Livewire\AdminAttendanceReport;
 use App\Models\User;
@@ -48,7 +49,7 @@ class RecapExporterPdfTest extends TestCase
         $this->assertStringContainsString('Ahmad Fauzi', $pdf);
 
         foreach ($hasil->summary as $status => $jumlah) {
-            $angka = ucfirst($status).' '.$jumlah;
+            $angka = AttendanceStatus::from($status)->label().' '.$jumlah;
 
             $this->assertStringContainsString($angka, $pdf, "PDF kehilangan ringkasan: {$angka}");
             $this->assertStringContainsString($angka, $layar, "Layar kehilangan ringkasan: {$angka}");

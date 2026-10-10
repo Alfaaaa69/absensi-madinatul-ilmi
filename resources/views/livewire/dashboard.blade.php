@@ -36,40 +36,70 @@
         </flux:card>
 
         <flux:card class="border-s-4 border-s-madrasah-600 p-4">
-            <flux:heading size="sm" class="text-zinc-600 dark:text-zinc-300">Alpa</flux:heading>
+            <flux:heading size="sm" class="text-zinc-600 dark:text-zinc-300">Alfa</flux:heading>
             <p class="text-2xl font-semibold text-red-700 dark:text-rose-300">{{ $counts['alpa'] }}</p>
         </flux:card>
     </div>
 
-    <flux:card>
-        <flux:heading size="sm" class="text-zinc-600 dark:text-zinc-300">Jadwal Saya Hari Ini</flux:heading>
+    @if (auth()->user()->isAdmin() && $academicYear !== null)
+        <div class="grid gap-4 md:grid-cols-2">
+            <flux:card>
+                <flux:heading size="sm" class="text-zinc-600 dark:text-zinc-300">Absensi 7 Hari Terakhir</flux:heading>
 
-        @if ($schedules->isEmpty())
-            <p class="py-6 text-sm text-zinc-500 dark:text-zinc-300">Tidak ada jadwal mengajar hari ini.</p>
-        @else
-            <flux:table>
-                <flux:table.columns>
-                    <flux:table.column>Waktu</flux:table.column>
-                    <flux:table.column>Mata Pelajaran</flux:table.column>
-                    <flux:table.column>Kelas</flux:table.column>
-                </flux:table.columns>
+                @if ($last7HasData)
+                    <div class="h-64" x-data="{ config: @js($chartLast7Days) }" wire:ignore>
+                        <canvas x-init="new Chart($el, config)"></canvas>
+                    </div>
+                @else
+                    <p class="py-6 text-sm text-zinc-500 dark:text-zinc-300">Belum ada data absensi 7 hari terakhir.</p>
+                @endif
+            </flux:card>
 
-                <flux:table.rows>
-                    @foreach ($schedules as $jadwal)
-                        <flux:table.row :key="$jadwal->id">
-                            <flux:table.cell>
-                                {{ $jadwal->start_time->format('H:i') }}
-                                -
-                                {{ $jadwal->end_time->format('H:i') }}
-                            </flux:table.cell>
+            <flux:card>
+                <flux:heading size="sm" class="text-zinc-600 dark:text-zinc-300">Absensi Hari Ini</flux:heading>
+
+                @if ($todayHasData)
+                    <div class="h-64" x-data="{ config: @js($chartToday) }" wire:ignore>
+                        <canvas x-init="new Chart($el, config)"></canvas>
+                    </div>
+                @else
+                    <p class="py-6 text-sm text-zinc-500 dark:text-zinc-300">Belum ada data absensi hari ini.</p>
+                @endif
+            </flux:card>
+        </div>
+    @endif
+
+    @if (! auth()->user()->isAdmin())
+        <flux:card>
+            <flux:heading size="sm" class="text-zinc-600 dark:text-zinc-300">Jadwal Saya Hari Ini</flux:heading>
+
+            @if ($schedules->isEmpty())
+                <p class="py-6 text-sm text-zinc-500 dark:text-zinc-300">Tidak ada jadwal mengajar hari ini.</p>
+            @else
+                <flux:table>
+                    <flux:table.columns>
+                        <flux:table.column>Waktu</flux:table.column>
+                        <flux:table.column>Mata Pelajaran</flux:table.column>
+                        <flux:table.column>Kelas</flux:table.column>
+                    </flux:table.columns>
+
+                    <flux:table.rows>
+                        @foreach ($schedules as $jadwal)
+                            <flux:table.row :key="$jadwal->id">
+                                <flux:table.cell>
+                                    {{ $jadwal->start_time->format('H:i') }}
+                                    -
+                                    {{ $jadwal->end_time->format('H:i') }}
+                                </flux:table.cell>
                                 <flux:table.cell class="font-medium text-zinc-900 dark:text-zinc-200">
-                                {{ $jadwal->subject->name }}
-                            </flux:table.cell>
-                            <flux:table.cell>{{ $jadwal->schoolClass->name }}</flux:table.cell>
-                        </flux:table.row>
-                    @endforeach
-                </flux:table.rows>
-            </flux:table>
-        @endif
-    </flux:card>
+                                    {{ $jadwal->subject->name }}
+                                </flux:table.cell>
+                                <flux:table.cell>{{ $jadwal->schoolClass->name }}</flux:table.cell>
+                            </flux:table.row>
+                        @endforeach
+                    </flux:table.rows>
+                </flux:table>
+            @endif
+        </flux:card>
+    @endif
 </div>

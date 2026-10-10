@@ -2,6 +2,7 @@
 
 namespace App\Exports;
 
+use App\Enums\AttendanceStatus;
 use App\Models\AcademicYear;
 use App\Models\SchoolClass;
 use App\Models\Student;
@@ -82,8 +83,8 @@ class RecapSheet implements FromArray, WithStyles, WithTitle
         $baris[] = [''];
         $baris[] = ['RINGKASAN', '', '', ''];
 
-        foreach (['hadir', 'izin', 'sakit', 'alpa'] as $status) {
-            $baris[] = [ucfirst($status), $this->result->summary[$status]];
+        foreach (AttendanceStatus::cases() as $status) {
+            $baris[] = [$status->label(), $this->result->summary[$status->value]];
         }
 
         return $baris;
@@ -111,7 +112,10 @@ class RecapSheet implements FromArray, WithStyles, WithTitle
             $header[] = $mapel->name;
         }
 
-        return array_merge($header, ['Hadir', 'Izin', 'Sakit', 'Alpa']);
+        return array_merge($header, array_map(
+            static fn (AttendanceStatus $status): string => $status->label(),
+            AttendanceStatus::cases(),
+        ));
     }
 
     /**

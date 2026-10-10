@@ -84,6 +84,17 @@ class AttendanceEntryFormTest extends TestCase
         }
     }
 
+    public function test_form_memakai_label_status_alfa(): void
+    {
+        [$jadwal] = $this->formSiap(1);
+
+        Livewire::test(AttendanceEntry::class, ['schedule' => $jadwal])
+            ->assertOk()
+            ->assertSee('Tandai Semua Alfa')
+            ->assertSee('Alfa')
+            ->assertDontSee('Alpa');
+    }
+
     public function test_tandai_semua_alpa_mengisi_seluruh_baris(): void
     {
         [$jadwal, $ids] = $this->formSiap();

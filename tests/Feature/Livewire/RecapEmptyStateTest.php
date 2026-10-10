@@ -108,7 +108,7 @@ class RecapEmptyStateTest extends TestCase
 
         Livewire::actingAs($s->wali)->test(HomeroomClassRecap::class)
             ->assertSee('Hadir 0')->assertSee('Izin 0')
-            ->assertSee('Sakit 0')->assertSee('Alpa 0');
+            ->assertSee('Sakit 0')->assertSee('Alfa 0');
     }
 
     /**

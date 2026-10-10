@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Recap;
 
+use App\Exports\RecapSheet;
 use App\Models\AcademicYear;
 use App\Models\Schedule;
 use App\Models\SchoolClass;
@@ -125,6 +126,28 @@ class RecapExporterTest extends TestCase
      * Prefiks berasal dari `.env`, jadi bisa berisi apa saja yang diketik admin.
      * Nilai kosong atau berisi `/` tidak boleh sampai jadi nama berkas.
      */
+    public function test_excel_memakai_label_status_alfa(): void
+    {
+        $baris = RecapSheet::for($this->hasil(), null)->array();
+
+        // Baris ke-6 (indeks 5) adalah header kolom: No, NISN, ..., Alfa.
+        $this->assertContains('Alfa', $baris[5]);
+        $this->assertNotContains('Alpa', $baris[5]);
+
+        // Baris RINGKASAN memakai label status sebagai sel pertama.
+        $label = array_map(static fn (array $b): mixed => $b[0] ?? null, $baris);
+
+        $this->assertContains('Alfa', $label);
+        $this->assertNotContains('Alpa', $label);
+    }
+
+    public function test_view_cetak_memakai_label_status_alfa(): void
+    {
+        $html = view('recap.print', ['result' => $this->hasil(), 'tahun' => null])->render();
+
+        $this->assertStringContainsString('Alfa', $html);
+    }
+
     public function test_prefiks_berkarakter_aneh_dibersihkan(): void
     {
         Carbon::setTestNow(Carbon::parse('2025-09-15'));

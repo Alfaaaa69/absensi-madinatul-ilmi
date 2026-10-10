@@ -51,4 +51,46 @@ class HomeroomClassRecapTest extends TestCase
         $this->actingAs(User::factory()->guru()->create())->get(route('rekap.index'))
             ->assertOk()->assertDontSee('Kelas Saya');
     }
+
+    /**
+     * "Jadwal Saya" hanya untuk guru, sama seperti di sidebar. Admin mengelola
+     * jadwal lewat Data Master, jadi tautan itu tidak boleh muncul di halaman
+     * rekap miliknya.
+     */
+    public function test_admin_tidak_lihat_link_jadwal_saya_di_halaman_rekap(): void
+    {
+        $this->actingAs(User::factory()->admin()->create())
+            ->get(route('rekap.index'))
+            ->assertOk()
+            ->assertDontSee(route('jadwal.index'), escape: false)
+            ->assertDontSee('Jadwal Saya');
+    }
+
+    public function test_guru_melihat_link_jadwal_saya_di_halaman_rekap(): void
+    {
+        $this->actingAs(User::factory()->guru()->create())
+            ->get(route('rekap.index'))
+            ->assertOk()
+            ->assertSee(route('jadwal.index'), escape: false);
+    }
+
+    /**
+     * "Mapel Saya" adalah rekap mapel yang diampu guru. Admin tidak mengajar,
+     * jadi tab itu tidak relevan untuknya — sama seperti "Jadwal Saya".
+     */
+    public function test_admin_tidak_melihat_tab_mapel_saya_di_halaman_rekap(): void
+    {
+        $this->actingAs(User::factory()->admin()->create())
+            ->get(route('rekap.index'))
+            ->assertOk()
+            ->assertDontSee('Mapel Saya');
+    }
+
+    public function test_guru_melihat_tab_mapel_saya_di_halaman_rekap(): void
+    {
+        $this->actingAs(User::factory()->guru()->create())
+            ->get(route('rekap.index'))
+            ->assertOk()
+            ->assertSee('Mapel Saya');
+    }
 }

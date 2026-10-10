@@ -23,7 +23,7 @@
                 <th class="px-2 py-1">Hadir</th>
                 <th class="px-2 py-1">Izin</th>
                 <th class="px-2 py-1">Sakit</th>
-                <th class="px-2 py-1">Alpa</th>
+                <th class="px-2 py-1">Alfa</th>
             </tr>
         </thead>
         <tbody>
@@ -61,5 +61,6 @@
 
 <div class="mt-3 text-sm text-zinc-700 dark:text-zinc-300">
     Ringkasan — Hadir {{ $result->summary['hadir'] }}, Izin {{ $result->summary['izin'] }},
-    Sakit {{ $result->summary['sakit'] }}, Alpa {{ $result->summary['alpa'] }}
+        Sakit {{ $result->summary['sakit'] }},
+        Alfa {{ $result->summary['alpa'] }}
 </div>

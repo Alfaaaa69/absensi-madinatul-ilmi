@@ -41,7 +41,7 @@
                 <th>Hadir</th>
                 <th>Izin</th>
                 <th>Sakit</th>
-                <th>Alpa</th>
+                <th>Alfa</th>
             </tr>
         </thead>
         <tbody>
@@ -79,7 +79,7 @@
         Hadir {{ $result->summary['hadir'] }},
         Izin {{ $result->summary['izin'] }},
         Sakit {{ $result->summary['sakit'] }},
-        Alpa {{ $result->summary['alpa'] }}
+        Alfa {{ $result->summary['alpa'] }}
     </div>
 </body>
 </html>

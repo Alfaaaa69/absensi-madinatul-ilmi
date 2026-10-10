@@ -99,7 +99,7 @@ class AttendanceEntryWindowTest extends TestCase
             ->assertOk()
             ->assertDontSee('Simpan Absensi')
             ->assertDontSee('Tandai Semua Hadir')
-            ->assertDontSee('Tandai Semua Alpa')
+            ->assertDontSee('Tandai Semua Alfa')
             ->assertDontSee('Contoh: Demam, acara keluarga, dll');
     }
 
