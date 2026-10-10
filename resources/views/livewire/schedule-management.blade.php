@@ -120,7 +120,7 @@
                                     @if ($jadwal->trashed())
                                         <button wire:click="pulihkan('{{ $jadwal->id }}')" class="ml-2 text-sm text-green-700 dark:text-green-300">Pulihkan</button>
                                     @else
-                                        <button wire:click="hapus('{{ $jadwal->id }}')" class="ml-2 text-sm text-red-700 dark:text-red-300">Hapus</button>
+                                        <button wire:click="askDelete('{{ $jadwal->id }}')" class="ml-2 text-sm text-red-700 dark:text-red-300">{{ $jadwal->memiliki_riwayat ? 'Arsipkan' : 'Hapus' }}</button>
                                     @endif
                                 </td>
                             </tr>
@@ -136,4 +136,22 @@
             </div>
         </div>
     </div>
+
+    @if ($pendingDeleteId !== null)
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+            <div class="w-full max-w-md rounded-lg border border-gray-200 bg-white p-6 dark:bg-zinc-900 dark:border-zinc-800">
+                <h2 class="font-medium text-gray-900 dark:text-gray-100">
+                    {{ $pendingDeletePermanent ? 'Hapus Permanen' : 'Arsipkan' }} — {{ $pendingDeleteName }}
+                </h2>
+                <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">{{ $pendingDeleteMessage }}</p>
+                <div class="mt-5 flex justify-end gap-2">
+                    <button type="button" wire:click="cancelDelete"
+                        class="rounded border border-gray-300 px-3 py-2 text-sm dark:border-zinc-700">Batal</button>
+                    <button type="button" wire:click="confirmDelete" class="rounded bg-red-700 px-3 py-2 text-sm text-white">
+                        {{ $pendingDeletePermanent ? 'Hapus Permanen' : 'Arsipkan' }}
+                    </button>
+                </div>
+            </div>
+        </div>
+    @endif
 </div>

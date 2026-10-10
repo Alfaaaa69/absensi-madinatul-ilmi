@@ -47,7 +47,12 @@ final class MasterDeletion
         });
     }
 
-    private function punyaRiwayatAbsensi(Model $record): bool
+    /**
+     * Baris ini masih dipakai riwayat absensi? Dipakai dua hal: keputusan
+     * hapus di atas, dan dialog konfirmasi hapus yang menjelaskan akibatnya
+     * sebelum aksi dijalankan.
+     */
+    public function punyaRiwayatAbsensi(Model $record): bool
     {
         if ($record instanceof Student) {
             return Attendance::query()

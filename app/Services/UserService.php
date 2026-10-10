@@ -63,6 +63,11 @@ class UserService
         $user->save();
     }
 
+    public function pulihkan(User $user): void
+    {
+        $user->restore();
+    }
+
     public function toggleActive(User $actor, User $target): void
     {
         if ($actor->is($target)) {

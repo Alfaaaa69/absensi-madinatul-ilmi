@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Livewire;
 
+use App\Enums\AttendanceStatus;
 use App\Enums\DayOfWeek;
 use App\Livewire\ScheduleManagement;
 use App\Models\Attendance;
@@ -250,7 +251,8 @@ class ScheduleManagementTest extends TestCase
 
         Livewire::actingAs($admin)
             ->test(ScheduleManagement::class)
-            ->call('hapus', $jadwal->id)
+            ->call('askDelete', $jadwal->id)
+            ->call('confirmDelete')
             ->assertHasNoErrors();
 
         $this->assertDatabaseMissing('schedules', ['id' => $jadwal->id]);
@@ -271,10 +273,48 @@ class ScheduleManagementTest extends TestCase
             'student_id' => $siswa->id,
         ]);
 
-        Livewire::actingAs($admin)->test(ScheduleManagement::class)->call('hapus', $jadwal->id);
+        Livewire::actingAs($admin)->test(ScheduleManagement::class)->call('askDelete', $jadwal->id)->call('confirmDelete');
 
         $this->assertSoftDeleted('schedules', ['id' => $jadwal->id]);
         $this->assertDatabaseHas('attendances', ['id' => $absensi->id]);
+    }
+
+    public function test_jadwal_yang_dipakai_absensi_menampilkan_tombol_arsipkan(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $jadwal = Schedule::factory()->create();
+        $siswa = Student::factory()->create(['class_id' => $jadwal->class_id]);
+        Attendance::query()->create([
+            'schedule_id' => $jadwal->id,
+            'student_id' => $siswa->id,
+            'date' => today(),
+            'status' => AttendanceStatus::Hadir,
+            'recorded_by' => $jadwal->teacher_id,
+        ]);
+
+        Livewire::actingAs($admin)
+            ->test(ScheduleManagement::class)
+            ->assertSee('Arsipkan')
+            ->assertDontSee('Hapus');
+    }
+
+    public function test_konfirmasi_hapus_jadwal_berriwayat_menjelaskan_arsip_sebelum_aksi(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $jadwal = Schedule::factory()->create();
+        $siswa = Student::factory()->create(['class_id' => $jadwal->class_id]);
+        Attendance::factory()->create([
+            'schedule_id' => $jadwal->id,
+            'student_id' => $siswa->id,
+        ]);
+
+        Livewire::actingAs($admin)
+            ->test(ScheduleManagement::class)
+            ->call('askDelete', $jadwal->id)
+            ->assertSet('pendingDeletePermanent', false)
+            ->assertSet('pendingDeleteMessage', 'Jadwal diarsipkan, bukan dihapus permanen. Absensi lama pada jadwal ini tetap utuh.');
+
+        $this->assertDatabaseHas('schedules', ['id' => $jadwal->id, 'deleted_at' => null]);
     }
 
     public function test_jadwal_dengan_guru_diarsipkan_tetap_menampilkan_nama_guru(): void

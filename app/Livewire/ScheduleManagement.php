@@ -5,13 +5,16 @@ namespace App\Livewire;
 use App\Enums\DayOfWeek;
 use App\Enums\HasilHapus;
 use App\Enums\UserRole;
+use App\Livewire\Concerns\ConfirmableDeletion;
 use App\Models\AcademicYear;
+use App\Models\Attendance;
 use App\Models\Schedule;
 use App\Models\SchoolClass;
 use App\Models\Subject;
 use App\Models\User;
 use App\Services\ScheduleManager;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
@@ -21,6 +24,10 @@ use Livewire\Component;
 #[Layout('layouts.app')]
 class ScheduleManagement extends Component
 {
+    use ConfirmableDeletion;
+
+    public const DELETE_MODAL = 'hapus-jadwal';
+
     public ?string $editingId = null;
 
     public string $academic_year_id = '';
@@ -128,9 +135,13 @@ class ScheduleManagement extends Component
         session()->flash('sukses', $baru ? 'Jadwal ditambahkan.' : 'Jadwal diperbarui.');
     }
 
-    public function hapus(string $id): void
+    public function confirmDelete(): void
     {
-        $jadwal = Schedule::findOrFail($id);
+        if ($this->pendingDeleteId === null) {
+            return;
+        }
+
+        $jadwal = Schedule::findOrFail($this->pendingDeleteId);
 
         Gate::authorize('delete', $jadwal);
 
@@ -139,6 +150,37 @@ class ScheduleManagement extends Component
         session()->flash('sukses', $hasil === HasilHapus::Permanen
             ? 'Jadwal dihapus permanen.'
             : 'Jadwal diarsipkan. Absensi lama pada jadwal ini tetap utuh.');
+
+        $this->cancelDelete();
+    }
+
+    protected function deletableRecord(string $id): Schedule
+    {
+        return Schedule::findOrFail($id);
+    }
+
+    /**
+     * @param  Schedule  $record
+     */
+    protected function deletableDescription(Model $record): string
+    {
+        return $record->schoolClass->name.' - '.$record->subject->name;
+    }
+
+    /**
+     * @param  Schedule  $record
+     */
+    protected function permanentDeleteMessage(Model $record): string
+    {
+        return 'Jadwal dihapus permanen dan slotnya dibebaskan.';
+    }
+
+    /**
+     * @param  Schedule  $record
+     */
+    protected function archiveDeleteMessage(Model $record): string
+    {
+        return 'Jadwal diarsipkan, bukan dihapus permanen. Absensi lama pada jadwal ini tetap utuh.';
     }
 
     public function pulihkan(string $id): void
@@ -178,6 +220,10 @@ class ScheduleManagement extends Component
                 ->get(),
             'hari' => DayOfWeek::cases(),
             'daftar' => Schedule::query()
+                ->addSelect(['memiliki_riwayat' => Attendance::query()
+                    ->selectRaw('1')
+                    ->whereColumn('attendances.schedule_id', 'schedules.id')
+                    ->limit(1)])
                 ->when($this->showArchived, fn ($query) => $query->onlyTrashed())
                 // Relasi schedule sudah withTrashed(), tapi whereHas memakai
                 // query sendiri jadi harus disebut eksplisit. Tanpa ini jadwal

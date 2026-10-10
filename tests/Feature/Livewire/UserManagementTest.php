@@ -320,7 +320,8 @@ class UserManagementTest extends TestCase
 
         Livewire::actingAs($admin)
             ->test(UserManagement::class)
-            ->call('delete', $admin->id);
+            ->call('askDelete', $admin->id)
+            ->call('confirmDelete');
 
         $this->assertDatabaseHas('users', [
             'id' => $admin->id,
@@ -335,7 +336,8 @@ class UserManagementTest extends TestCase
 
         Livewire::actingAs($admin)
             ->test(UserManagement::class)
-            ->call('delete', $admin->id);
+            ->call('askDelete', $admin->id)
+            ->call('confirmDelete');
 
         $this->assertDatabaseHas('users', [
             'id' => $admin->id,
@@ -350,7 +352,8 @@ class UserManagementTest extends TestCase
 
         Livewire::actingAs($admin)
             ->test(UserManagement::class)
-            ->call('delete', $target->id)
+            ->call('askDelete', $target->id)
+            ->call('confirmDelete')
             ->assertHasNoErrors();
 
         // Guru ini belum pernah mengajar ataupun mencatat absensi, jadi
@@ -383,7 +386,8 @@ class UserManagementTest extends TestCase
 
         Livewire::actingAs($admin)
             ->test(UserManagement::class)
-            ->call('delete', $teacher->id)
+            ->call('askDelete', $teacher->id)
+            ->call('confirmDelete')
             ->assertHasNoErrors();
 
         $this->assertSoftDeleted('users', ['id' => $teacher->id]);
@@ -391,6 +395,77 @@ class UserManagementTest extends TestCase
             'id' => $absensi->id,
             'recorded_by' => $teacher->id,
         ]);
+    }
+
+    public function test_user_berriwayat_absensi_menampilkan_tombol_arsipkan(): void
+    {
+        $admin = $this->admin();
+        $teacher = User::factory()->guru()->create(['name' => 'Budi Santoso']);
+        $kelas = SchoolClass::factory()->create(['homeroom_teacher_id' => $teacher->id]);
+        $jadwal = Schedule::factory()->create([
+            'class_id' => $kelas->id,
+            'teacher_id' => $teacher->id,
+            'day_of_week' => DayOfWeek::Senin,
+        ]);
+        $siswa = Student::factory()->create(['class_id' => $kelas->id]);
+
+        Attendance::factory()->create([
+            'student_id' => $siswa->id,
+            'schedule_id' => $jadwal->id,
+            'date' => now()->startOfWeek()->addDay()->toDateString(),
+            'status' => AttendanceStatus::Hadir,
+            'recorded_by' => $teacher->id,
+        ]);
+
+        Livewire::actingAs($admin)
+            ->test(UserManagement::class)
+            ->assertSee('Arsipkan');
+    }
+
+    public function test_konfirmasi_hapus_user_berriwayat_menjelaskan_arsip_sebelum_aksi(): void
+    {
+        $admin = $this->admin();
+        $teacher = User::factory()->guru()->create(['name' => 'Budi Santoso']);
+        $kelas = SchoolClass::factory()->create(['homeroom_teacher_id' => $teacher->id]);
+        $jadwal = Schedule::factory()->create([
+            'class_id' => $kelas->id,
+            'teacher_id' => $teacher->id,
+            'day_of_week' => DayOfWeek::Senin,
+        ]);
+        $siswa = Student::factory()->create(['class_id' => $kelas->id]);
+
+        Attendance::factory()->create([
+            'student_id' => $siswa->id,
+            'schedule_id' => $jadwal->id,
+            'date' => now()->startOfWeek()->addDay()->toDateString(),
+            'status' => AttendanceStatus::Hadir,
+            'recorded_by' => $teacher->id,
+        ]);
+
+        Livewire::actingAs($admin)
+            ->test(UserManagement::class)
+            ->call('askDelete', $teacher->id)
+            ->assertSet('pendingDeletePermanent', false)
+            ->assertSet('pendingDeleteMessage', 'Akun Budi Santoso diarsipkan, bukan dihapus permanen — masih dipakai riwayat absensi yang harus tetap terbaca.');
+
+        $this->assertDatabaseHas('users', ['id' => $teacher->id, 'deleted_at' => null]);
+    }
+
+    public function test_user_terarsip_bisa_ditampilkan_dan_dipulihkan(): void
+    {
+        $admin = $this->admin();
+        $target = User::factory()->guru()->create(['name' => 'Budi Santoso']);
+        $target->delete();
+
+        Livewire::actingAs($admin)
+            ->test(UserManagement::class)
+            ->set('showArchived', true)
+            ->assertSee('Pulihkan')
+            ->assertSee('Budi Santoso')
+            ->call('pulihkan', $target->id)
+            ->assertHasNoErrors();
+
+        $this->assertNotSoftDeleted('users', ['id' => $target->id]);
     }
 
     public function test_nuptk_user_yang_sudah_dihapus_tidak_bisa_dipakai_lagi(): void

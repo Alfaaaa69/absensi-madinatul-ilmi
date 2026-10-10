@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Livewire;
 
+use App\Enums\AttendanceStatus;
 use App\Livewire\SubjectManagement;
 use App\Models\Attendance;
 use App\Models\Schedule;
@@ -68,10 +69,51 @@ class SubjectManagementTest extends TestCase
         Livewire::actingAs($admin)
             ->test(SubjectManagement::class)
             ->assertSee('Matematika')
-            ->call('hapus', $mapel->id)
+            ->call('askDelete', $mapel->id)
+            ->call('confirmDelete')
             ->assertDontSee('Matematika');
 
         $this->assertDatabaseMissing('subjects', ['id' => $mapel->id]);
+    }
+
+    public function test_mapel_yang_dipakai_absensi_menampilkan_tombol_arsipkan(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $jadwal = Schedule::factory()->create();
+        $mapel = $jadwal->subject;
+        $siswa = Student::factory()->create(['class_id' => $jadwal->class_id]);
+        Attendance::query()->create([
+            'schedule_id' => $jadwal->id,
+            'student_id' => $siswa->id,
+            'date' => today(),
+            'status' => AttendanceStatus::Hadir,
+            'recorded_by' => $jadwal->teacher_id,
+        ]);
+
+        Livewire::actingAs($admin)
+            ->test(SubjectManagement::class)
+            ->assertSee('Arsipkan')
+            ->assertDontSee('Hapus');
+    }
+
+    public function test_konfirmasi_hapus_mapel_berriwayat_menjelaskan_arsip_sebelum_aksi(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $jadwal = Schedule::factory()->create();
+        $mapel = $jadwal->subject;
+        $siswa = Student::factory()->create(['class_id' => $jadwal->class_id]);
+        Attendance::factory()->create([
+            'schedule_id' => $jadwal->id,
+            'student_id' => $siswa->id,
+        ]);
+
+        Livewire::actingAs($admin)
+            ->test(SubjectManagement::class)
+            ->call('askDelete', $mapel->id)
+            ->assertSet('pendingDeletePermanent', false)
+            ->assertSet('pendingDeleteMessage', 'Mata pelajaran '.$mapel->name.' diarsipkan, bukan dihapus permanen. Jadwal dan absensi lamanya tetap utuh.');
+
+        $this->assertDatabaseHas('subjects', ['id' => $mapel->id, 'deleted_at' => null]);
     }
 
     public function test_mapel_dengan_riwayat_absensi_hanya_diarsipkan(): void
@@ -85,7 +127,7 @@ class SubjectManagementTest extends TestCase
             'student_id' => $siswa->id,
         ]);
 
-        Livewire::actingAs($admin)->test(SubjectManagement::class)->call('hapus', $mapel->id);
+        Livewire::actingAs($admin)->test(SubjectManagement::class)->call('askDelete', $mapel->id)->call('confirmDelete');
 
         $this->assertSoftDeleted('subjects', ['id' => $mapel->id]);
         $this->assertDatabaseHas('attendances', ['id' => $absensi->id]);

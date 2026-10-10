@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Livewire;
 
+use App\Enums\AttendanceStatus;
 use App\Enums\StudentGender;
 use App\Livewire\StudentManagement;
 use App\Models\AcademicYear;
@@ -87,7 +88,8 @@ class StudentManagementTest extends TestCase
 
         Livewire::actingAs($admin)
             ->test(StudentManagement::class)
-            ->call('hapus', $siswa->id)
+            ->call('askDelete', $siswa->id)
+            ->call('confirmDelete')
             ->assertSee('punya riwayat absensi');
 
         $this->assertSoftDeleted('students', ['id' => $siswa->id]);
@@ -100,9 +102,64 @@ class StudentManagementTest extends TestCase
         $admin = User::factory()->admin()->create();
         $siswa = Student::factory()->create(['nisn' => '3200123456']);
 
-        Livewire::actingAs($admin)->test(StudentManagement::class)->call('hapus', $siswa->id);
+        Livewire::actingAs($admin)->test(StudentManagement::class)->call('askDelete', $siswa->id)->call('confirmDelete');
 
         $this->assertDatabaseMissing('students', ['id' => $siswa->id]);
+    }
+
+    public function test_siswa_yang_dipakai_absensi_menampilkan_tombol_arsipkan(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $kelas = SchoolClass::factory()->create();
+        $jadwal = Schedule::factory()->create(['class_id' => $kelas->id]);
+        $siswa = Student::factory()->create(['class_id' => $kelas->id]);
+
+        // Attendance::factory() selalu menulis jadwal+siswa cadangan ke DB,
+        // jadi catatan absensi dibuat langsung supaya halaman hanya punya satu baris.
+        Attendance::query()->create([
+            'schedule_id' => $jadwal->id,
+            'student_id' => $siswa->id,
+            'date' => today(),
+            'status' => AttendanceStatus::Hadir,
+            'recorded_by' => $jadwal->teacher_id,
+        ]);
+
+        Livewire::actingAs($admin)
+            ->test(StudentManagement::class)
+            ->assertSee('Arsipkan')
+            ->assertDontSee('Hapus');
+    }
+
+    public function test_siswa_tanpa_riwayat_menampilkan_tombol_hapus(): void
+    {
+        $admin = User::factory()->admin()->create();
+        Student::factory()->create(['nisn' => '3200123456']);
+
+        Livewire::actingAs($admin)
+            ->test(StudentManagement::class)
+            ->assertSee('Hapus')
+            ->assertDontSee('Arsipkan');
+    }
+
+    public function test_konfirmasi_hapus_siswa_berriwayat_menjelaskan_arsip_sebelum_aksi(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $kelas = SchoolClass::factory()->create();
+        $jadwal = Schedule::factory()->create(['class_id' => $kelas->id]);
+        $siswa = Student::factory()->create(['class_id' => $kelas->id, 'name' => 'Ririn']);
+
+        Attendance::factory()->create([
+            'schedule_id' => $jadwal->id,
+            'student_id' => $siswa->id,
+        ]);
+
+        Livewire::actingAs($admin)
+            ->test(StudentManagement::class)
+            ->call('askDelete', $siswa->id)
+            ->assertSet('pendingDeletePermanent', false)
+            ->assertSet('pendingDeleteMessage', 'Ririn diarsipkan, bukan dihapus permanen. Siswa ini punya riwayat absensi yang harus tetap bisa dibaca.');
+
+        $this->assertDatabaseHas('students', ['id' => $siswa->id, 'deleted_at' => null]);
     }
 
     public function test_siswa_arsip_bisa_dipulihkan(): void

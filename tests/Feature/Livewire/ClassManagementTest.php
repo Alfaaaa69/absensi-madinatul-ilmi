@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Livewire;
 
+use App\Enums\AttendanceStatus;
 use App\Livewire\ClassManagement;
 use App\Models\AcademicYear;
 use App\Models\Attendance;
@@ -199,7 +200,8 @@ class ClassManagementTest extends TestCase
 
         Livewire::actingAs($admin)
             ->test(ClassManagement::class)
-            ->call('hapus', $kelas->id)
+            ->call('askDelete', $kelas->id)
+            ->call('confirmDelete')
             ->assertSee('3 siswa');
 
         $this->assertSoftDeleted('classes', ['id' => $kelas->id]);
@@ -213,10 +215,42 @@ class ClassManagementTest extends TestCase
         $kelas = SchoolClass::factory()->create(['name' => 'VII-A']);
         $siswa = Student::factory()->count(3)->create(['class_id' => $kelas->id]);
 
-        Livewire::actingAs($admin)->test(ClassManagement::class)->call('hapus', $kelas->id);
+        Livewire::actingAs($admin)->test(ClassManagement::class)->call('askDelete', $kelas->id)->call('confirmDelete');
 
         $this->assertDatabaseMissing('classes', ['id' => $kelas->id]);
         $this->assertDatabaseMissing('students', ['id' => $siswa->first()->id]);
+    }
+
+    public function test_kelas_yang_dipakai_absensi_menampilkan_tombol_arsipkan(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $kelas = SchoolClass::factory()->create(['name' => 'VII-A']);
+        $jadwal = Schedule::factory()->create(['class_id' => $kelas->id]);
+        $siswa = Student::factory()->create(['class_id' => $kelas->id]);
+        Attendance::query()->create([
+            'schedule_id' => $jadwal->id,
+            'student_id' => $siswa->id,
+            'date' => today(),
+            'status' => AttendanceStatus::Hadir,
+            'recorded_by' => $jadwal->teacher_id,
+        ]);
+
+        Livewire::actingAs($admin)
+            ->test(ClassManagement::class)
+            ->assertSee('Arsipkan')
+            ->assertDontSee('Hapus');
+    }
+
+    public function test_konfirmasi_hapus_kelas_tanpa_riwayat_menjelaskan_hapus_permanen(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $kelas = SchoolClass::factory()->create(['name' => 'VII-A']);
+
+        Livewire::actingAs($admin)
+            ->test(ClassManagement::class)
+            ->call('askDelete', $kelas->id)
+            ->assertSet('pendingDeletePermanent', true)
+            ->assertSet('pendingDeleteMessage', 'Kelas VII-A dihapus permanen.');
     }
 
     public function test_kelas_arsip_bisa_dipulihkan(): void

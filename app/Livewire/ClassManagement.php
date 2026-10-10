@@ -4,11 +4,14 @@ namespace App\Livewire;
 
 use App\Enums\HasilHapus;
 use App\Enums\UserRole;
+use App\Livewire\Concerns\ConfirmableDeletion;
 use App\Models\AcademicYear;
+use App\Models\Attendance;
 use App\Models\SchoolClass;
 use App\Models\User;
 use App\Services\ClassManager;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
@@ -18,6 +21,10 @@ use Livewire\Component;
 #[Layout('layouts.app')]
 class ClassManagement extends Component
 {
+    use ConfirmableDeletion;
+
+    public const DELETE_MODAL = 'hapus-kelas';
+
     public ?string $editingId = null;
 
     public string $academic_year_id = '';
@@ -112,9 +119,13 @@ class ClassManagement extends Component
         session()->flash('sukses', $baru ? 'Kelas ditambahkan.' : 'Kelas diperbarui.');
     }
 
-    public function hapus(string $id): void
+    public function confirmDelete(): void
     {
-        $kelas = SchoolClass::findOrFail($id);
+        if ($this->pendingDeleteId === null) {
+            return;
+        }
+
+        $kelas = SchoolClass::findOrFail($this->pendingDeleteId);
 
         Gate::authorize('delete', $kelas);
 
@@ -126,6 +137,37 @@ class ClassManagement extends Component
             $jumlahSiswa > 0 => "Kelas {$kelas->name} diarsipkan. {$jumlahSiswa} siswa dan riwayat absensinya tetap tersimpan.",
             default => "Kelas {$kelas->name} diarsipkan.",
         });
+
+        $this->cancelDelete();
+    }
+
+    protected function deletableRecord(string $id): SchoolClass
+    {
+        return SchoolClass::findOrFail($id);
+    }
+
+    /**
+     * @param  SchoolClass  $record
+     */
+    protected function deletableDescription(Model $record): string
+    {
+        return $record->name;
+    }
+
+    /**
+     * @param  SchoolClass  $record
+     */
+    protected function permanentDeleteMessage(Model $record): string
+    {
+        return "Kelas {$record->name} dihapus permanen.";
+    }
+
+    /**
+     * @param  SchoolClass  $record
+     */
+    protected function archiveDeleteMessage(Model $record): string
+    {
+        return "Kelas {$record->name} diarsipkan, bukan dihapus permanen. Siswa dan riwayat absensinya tetap tersimpan.";
     }
 
     public function pulihkan(string $id): void
@@ -156,6 +198,13 @@ class ClassManagement extends Component
                 ->orderBy('name')
                 ->get(),
             'daftar' => SchoolClass::query()
+                ->addSelect(['memiliki_riwayat' => Attendance::query()
+                    ->selectRaw('1')
+                    ->where(function ($query) {
+                        $query->whereHas('schedule', fn ($q) => $q->withTrashed()->whereColumn('schedules.class_id', 'classes.id'))
+                            ->orWhereHas('student', fn ($q) => $q->withTrashed()->whereColumn('students.class_id', 'classes.id'));
+                    })
+                    ->limit(1)])
                 ->when($this->showArchived, fn ($query) => $query->onlyTrashed())
                 ->with('academicYear')
                 ->with('homeroomTeacher')
