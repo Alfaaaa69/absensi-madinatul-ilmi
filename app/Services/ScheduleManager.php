@@ -5,12 +5,16 @@ namespace App\Services;
 use App\Enums\DayOfWeek;
 use App\Enums\HasilHapus;
 use App\Models\Schedule;
+use App\Models\SchoolClass;
 use App\Models\User;
 use App\Support\ScheduleConflictDetector;
+use App\Support\SchoolBreaks;
 use Illuminate\Validation\ValidationException;
 
 final class ScheduleManager
 {
+    private const MAKS_KELAS_PER_GURU = 3;
+
     public function __construct(
         private readonly ScheduleConflictDetector $detector,
         private readonly MasterDeletion $deletion,
@@ -23,6 +27,16 @@ final class ScheduleManager
     {
         $guru = User::findOrFail($data['teacher_id']);
         $hari = DayOfWeek::from((int) $data['day_of_week']);
+
+        $jeda = SchoolBreaks::overlap($hari, $data['start_time'], $data['end_time']);
+
+        if ($jeda !== null) {
+            throw ValidationException::withMessages([
+                'start_time' => "Jam {$jeda['start']}–{$jeda['end']} dipakai untuk {$jeda['label']}.",
+            ]);
+        }
+
+        $this->validasiBatasKelas($guru, $data['class_id'], $schedule?->id);
 
         $bentrok = $this->detector->findConflicts(
             $guru,
@@ -80,5 +94,27 @@ final class ScheduleManager
             ->implode('; ');
 
         return "Jam guru sudah dipakai: {$rincian}.";
+    }
+
+    private function validasiBatasKelas(User $guru, string $classId, ?string $abaikanScheduleId): void
+    {
+        $kelas = SchoolClass::withTrashed()->findOrFail($classId);
+
+        /** @var list<string> $kelasUnik */
+        $kelasUnik = Schedule::query()
+            ->where('teacher_id', $guru->id)
+            ->whereIn('class_id', SchoolClass::query()
+                ->where('academic_year_id', $kelas->academic_year_id)
+                ->select('id'))
+            ->when($abaikanScheduleId !== null, fn ($q) => $q->where('id', '!=', $abaikanScheduleId))
+            ->distinct()
+            ->pluck('class_id')
+            ->all();
+
+        if (! in_array($classId, $kelasUnik, true) && count($kelasUnik) >= self::MAKS_KELAS_PER_GURU) {
+            throw ValidationException::withMessages([
+                'class_id' => "Guru {$guru->name} sudah mengajar ".self::MAKS_KELAS_PER_GURU.' kelas berbeda pada tahun ajaran ini (maksimal '.self::MAKS_KELAS_PER_GURU.' kelas).',
+            ]);
+        }
     }
 }
