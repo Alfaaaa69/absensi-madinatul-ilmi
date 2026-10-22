@@ -59,10 +59,10 @@ class AppServiceProvider extends ServiceProvider
     protected function registerLoginRateLimiter(): void
     {
         RateLimiter::for('login', function (Request $request): Limit {
-            $nuptk = (string) $request->input('nuptk');
+            $identifier = (string) ($request->input('email') ?? $request->input('nuptk') ?? '');
 
             return new Limit(
-                key: AttemptAuthentication::throttleKeyFor($nuptk, $request->ip()),
+                key: AttemptAuthentication::throttleKeyFor($identifier, $request->ip()),
                 maxAttempts: AttemptAuthentication::MAX_ATTEMPTS,
                 decaySeconds: AttemptAuthentication::DECAY_SECONDS,
             );
@@ -114,14 +114,18 @@ class AppServiceProvider extends ServiceProvider
             app()->isProduction(),
         );
 
-        Password::defaults(fn (): ?Password => app()->isProduction()
+        // Produksi lebih ketat daripada syarat minimum docs/security.md.
+        // Di lokal/test tetap ada aturan minimum agar perilakunya bisa diuji.
+        Password::defaults(fn (): Password => app()->isProduction()
             ? Password::min(12)
                 ->mixedCase()
                 ->letters()
                 ->numbers()
                 ->symbols()
                 ->uncompromised()
-            : null,
+            : Password::min(8)
+                ->mixedCase()
+                ->numbers(),
         );
     }
 }

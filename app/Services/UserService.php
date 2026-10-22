@@ -27,6 +27,8 @@ class UserService
                 'nuptk' => $data['nuptk'],
                 'email' => $this->normaliseEmail($data['email']),
                 'password' => Hash::make($data['password']),
+                // Password buatan admin adalah password sementara.
+                'must_change_password' => true,
                 'role' => UserRole::from($data['role']),
                 'is_active' => true,
             ]);
@@ -60,6 +62,7 @@ class UserService
     public function resetPassword(User $user, string $plainPassword): void
     {
         $user->password = Hash::make($plainPassword);
+        $user->must_change_password = true;
         $user->save();
     }
 

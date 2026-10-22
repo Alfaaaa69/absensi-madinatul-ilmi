@@ -197,6 +197,11 @@ class ClassManagement extends Component
                 ->where('is_active', true)
                 ->orderBy('name')
                 ->get(),
+            'waliTerpakai' => SchoolClass::query()
+                ->where('academic_year_id', $this->academic_year_id)
+                ->whereNotNull('homeroom_teacher_id')
+                ->pluck('name', 'homeroom_teacher_id')
+                ->all(),
             'daftar' => SchoolClass::query()
                 ->addSelect(['memiliki_riwayat' => Attendance::query()
                     ->selectRaw('1')

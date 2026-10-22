@@ -32,39 +32,39 @@ class LoginPageTest extends TestCase
         $this->get('/login')
             ->assertOk()
             ->assertSee('Masuk')
-            ->assertSee('NUPTK');
+            ->assertSee('Email');
     }
 
     public function test_component_menampilkan_form(): void
     {
         Livewire::test(Login::class)
             ->assertOk()
-            ->assertSee('NUPTK')
+            ->assertSee('Email')
             ->assertSee('Password');
     }
 
-    public function test_validasi_nuptk_dan_password_wajib_diisi(): void
+    public function test_validasi_email_dan_password_wajib_diisi(): void
     {
         Livewire::test(Login::class)
-            ->set('nuptk', '')
+            ->set('email', '')
             ->set('password', '')
             ->call('authenticate')
-            ->assertHasErrors(['nuptk' => 'required', 'password' => 'required']);
+            ->assertHasErrors(['email' => 'required', 'password' => 'required']);
     }
 
-    public function test_nuptk_harus_18_digit_angka(): void
+    public function test_email_harus_format_email(): void
     {
         Livewire::test(Login::class)
-            ->set('nuptk', '12345')
+            ->set('email', 'bukan-email')
             ->set('password', 'rahasia-kuat-123')
             ->call('authenticate')
-            ->assertHasErrors(['nuptk' => 'digits']);
+            ->assertHasErrors(['email' => 'email']);
     }
 
     public function test_password_kurang_dari_delapan_karakter_ditolak(): void
     {
         Livewire::test(Login::class)
-            ->set('nuptk', '100000000000000001')
+            ->set('email', 'guru@sekolah.sch.id')
             ->set('password', 'pendek')
             ->call('authenticate')
             ->assertHasErrors(['password' => 'min']);
@@ -73,13 +73,13 @@ class LoginPageTest extends TestCase
     public function test_login_berhasil_mengarah_ke_dashboard(): void
     {
         $user = User::factory()->guru()->create([
-            'nuptk' => '100000000000000001',
+            'email' => 'guru@sekolah.sch.id',
             'password' => 'rahasia-kuat-123',
             'is_active' => true,
         ]);
 
         Livewire::test(Login::class)
-            ->set('nuptk', '100000000000000001')
+            ->set('email', 'guru@sekolah.sch.id')
             ->set('password', 'rahasia-kuat-123')
             ->call('authenticate')
             ->assertHasNoErrors()
@@ -88,13 +88,13 @@ class LoginPageTest extends TestCase
         $this->assertAuthenticatedAs($user);
     }
 
-    public function test_gagal_login_menampilkan_pesan_pada_field_nuptk(): void
+    public function test_gagal_login_menampilkan_pesan_pada_field_email(): void
     {
         Livewire::test(Login::class)
-            ->set('nuptk', '999999999999999999')
+            ->set('email', 'tidak-ada@sekolah.sch.id')
             ->set('password', 'rahasia-kuat-123')
             ->call('authenticate')
-            ->assertHasErrors('nuptk');
+            ->assertHasErrors('email');
 
         $this->assertGuest();
     }
@@ -102,7 +102,7 @@ class LoginPageTest extends TestCase
     public function test_password_tidak_pernah_ditampilkan_kembali_setelah_gagal(): void
     {
         Livewire::test(Login::class)
-            ->set('nuptk', '999999999999999999')
+            ->set('email', 'tidak-ada@sekolah.sch.id')
             ->set('password', 'rahasia-kuat-123')
             ->call('authenticate')
             ->assertSet('password', '');

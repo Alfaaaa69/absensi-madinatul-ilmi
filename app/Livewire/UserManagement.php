@@ -14,6 +14,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Password;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -147,7 +148,7 @@ class UserManagement extends Component
         ];
 
         if (! $isUpdate) {
-            $rules['password'] = ['required', 'string', 'min:8', 'confirmed'];
+            $rules['password'] = ['required', 'string', 'confirmed', Password::default()];
         }
 
         $this->validate($rules);
@@ -300,7 +301,7 @@ class UserManagement extends Component
         $this->authorize('update', $target);
 
         $this->validate([
-            'password' => ['required', 'string', 'min:8', 'confirmed'],
+            'password' => ['required', 'string', 'confirmed', Password::default()],
         ]);
 
         $service->resetPassword($target, $this->password);

@@ -27,12 +27,12 @@
                             </div>
                             <div class="flex flex-col items-end gap-3">
                                 @if ($item['sudahAbsen'])
-                                    <span class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800 dark:text-emerald-200 dark:bg-emerald-400/20">Sudah absen</span>
+                                    <span class="rounded-full bg-madrasah-100 px-3 py-1 text-xs font-semibold text-madrasah-800 dark:text-madrasah-200 dark:bg-madrasah-400/20">Sudah absen</span>
                                 @else
                                     <span class="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800 dark:text-amber-200 dark:bg-amber-400/20">Belum absen</span>
                                 @endif
                                 <a href="{{ route('absensi.create', $item['jadwal']) }}"
-                                   class="rounded-lg bg-zinc-800 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-700">
+                                   class="rounded-lg bg-madrasah-600 px-4 py-2 text-sm font-semibold text-white hover:bg-madrasah-700">
                                     {{ $item['sudahAbsen'] ? 'Perbarui Absensi' : 'Isi Absensi' }}
                                 </a>
                             </div>

@@ -23,27 +23,39 @@
     --color-zinc-900: #171717;
     --color-zinc-950: #0a0a0a;
 
-    --color-madrasah-50: #ecfdf5;
-    --color-madrasah-100: #d1fae5;
-    --color-madrasah-200: #a7f3d0;
-    --color-madrasah-300: #6ee7b7;
-    --color-madrasah-400: #34d399;
-    --color-madrasah-500: #10b981;
-    --color-madrasah-600: #059669;
-    --color-madrasah-700: #047857;
-    --color-madrasah-800: #065f46;
-    --color-madrasah-900: #064e3b;
+    --color-madrasah-50: #f0faf9;
+    --color-madrasah-100: #d7f0ed;
+    --color-madrasah-200: #b0e2dd;
+    --color-madrasah-300: #80cdc7;
+    --color-madrasah-400: #4cb0aa;
+    --color-madrasah-500: #34938c;
+    --color-madrasah-600: #2f7e78;
+    --color-madrasah-700: #276763;
+    --color-madrasah-800: #225250;
+    --color-madrasah-900: #1e4543;
+    --color-madrasah-950: #10312f;
 
-    --color-accent: var(--color-neutral-800);
-    --color-accent-content: var(--color-neutral-800);
+    --color-sand-50: #fdfbf7;
+    --color-sand-100: #faf3e3;
+    --color-sand-200: #f3e5c3;
+    --color-sand-300: #ead194;
+    --color-sand-400: #deb862;
+    --color-sand-500: #c9a227;
+    --color-sand-600: #a98620;
+    --color-sand-700: #86691d;
+    --color-sand-800: #71571e;
+    --color-sand-900: #654c1e;
+
+    --color-accent: var(--color-madrasah-700);
+    --color-accent-content: var(--color-madrasah-800);
     --color-accent-foreground: var(--color-white);
 }
 
 @layer theme {
     .dark {
-        --color-accent: var(--color-white);
-        --color-accent-content: var(--color-white);
-        --color-accent-foreground: var(--color-neutral-800);
+        --color-accent: var(--color-madrasah-500);
+        --color-accent-content: var(--color-madrasah-200);
+        --color-accent-foreground: var(--color-madrasah-950);
     }
 }
 
@@ -55,6 +67,15 @@
     ::backdrop,
     ::file-selector-button {
         border-color: var(--color-gray-200, currentColor);
+    }
+
+    .dark {
+        color-scheme: dark;
+    }
+
+    select,
+    option {
+        @apply bg-white text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100;
     }
 }
 

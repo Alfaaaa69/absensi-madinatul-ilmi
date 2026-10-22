@@ -34,8 +34,30 @@
             </div>
         @else
             @if ($sukses)
-                <div class="rounded-xl border border-emerald-300 bg-emerald-50 p-4 text-sm font-medium text-emerald-800 dark:text-emerald-200 dark:bg-emerald-400/10 dark:border-emerald-400/40">
-                    {{ $this->pesanTersimpan() }}
+                <div x-data="{ open: true }" x-show="open" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <div class="w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-700 dark:bg-zinc-900">
+                        <div class="flex flex-col items-center text-center">
+                            <div class="flex h-12 w-12 items-center justify-center rounded-full bg-madrasah-100 text-madrasah-700 dark:bg-madrasah-400/20 dark:text-madrasah-300">
+                                <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                </svg>
+                            </div>
+                            <h3 class="mt-4 text-lg font-semibold text-zinc-900 dark:text-zinc-100">Absensi Berhasil Disimpan</h3>
+                            <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400">{{ $this->pesanTersimpan() }}</p>
+
+                            <div class="mt-6 flex w-full flex-col gap-2 sm:flex-row sm:justify-center">
+                                <flux:button variant="primary" href="{{ route('dashboard') }}" wire:navigate>
+                                    Ke Dashboard
+                                </flux:button>
+                                <flux:button variant="filled" href="{{ route('jadwal.index') }}" wire:navigate>
+                                    Jadwal Saya
+                                </flux:button>
+                                <flux:button variant="ghost" @click="open = false">
+                                    Tutup
+                                </flux:button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             @endif
 
@@ -112,7 +134,7 @@
 
                 <div class="flex justify-end">
                     <button type="submit"
-                            class="rounded-lg bg-zinc-800 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-700">
+                            class="rounded-lg bg-madrasah-600 px-4 py-2 text-sm font-semibold text-white hover:bg-madrasah-700">
                         {{ $sudahDisimpan ? 'Simpan Perubahan' : 'Simpan Absensi' }}
                     </button>
                 </div>

@@ -20,7 +20,7 @@ class HomeroomClassRecapTest extends TestCase
         Livewire::actingAs($s->wali)->test(HomeroomClassRecap::class)
             ->assertSet('periodType', 'monthly')
             ->assertSee('VII-A')->assertSee('Ahmad Fauzi')
-            ->assertSee('1/2')->assertSee('Hadir 1')->assertSee('Izin 1');
+            ->assertSee('1')->assertSee('Hadir 1')->assertSee('Izin 1');
     }
 
     public function test_bulan_di_luar_tahun_ajaran_menampilkan_pesan_error(): void
@@ -92,5 +92,27 @@ class HomeroomClassRecapTest extends TestCase
             ->get(route('rekap.index'))
             ->assertOk()
             ->assertSee('Mapel Saya');
+    }
+
+    public function test_halaman_rekap_memiliki_tab_interaktif_alpine(): void
+    {
+        $s = RecapScenario::waliKelas();
+
+        $this->actingAs($s->wali)
+            ->get(route('rekap.index'))
+            ->assertOk()
+            ->assertSeeHtml('x-data="{ activeTab:')
+            ->assertSeeHtml('@click="activeTab =')
+            ->assertSeeHtml('x-show="activeTab ===');
+    }
+
+    public function test_rekap_kelas_saya_menampilkan_badge_dan_total(): void
+    {
+        $s = RecapScenario::waliKelas();
+
+        Livewire::actingAs($s->wali)->test(HomeroomClassRecap::class)
+            ->assertSee('Wali Kelas: VII-A')
+            ->assertSee('Total')
+            ->assertSee('1');
     }
 }

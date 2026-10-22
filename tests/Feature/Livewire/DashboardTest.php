@@ -512,18 +512,165 @@ class DashboardTest extends TestCase
             ->assertViewHas('chartToday', function (array $chart): bool {
                 return $chart['data']['datasets'][0]['data'] === [0, 0, 0, 0];
             })
-            ->assertViewHas('last7HasData', false);
+            ->assertViewHas('chartLast7Days', function (array $chart): bool {
+                return collect($chart['data']['datasets'])->every(
+                    fn (array $dataset): bool => $dataset['data'] === [0, 0, 0, 0, 0, 0, 0]
+                );
+            });
     }
 
-    public function test_grafik_menampilkan_pesan_kosong_saat_belum_ada_absensi(): void
+    public function test_grafik_tetap_tampil_ketika_belum_ada_absensi(): void
     {
         $this->aktifTahunAjaran();
         $admin = User::factory()->admin()->create(['is_active' => true]);
 
         Livewire::actingAs($admin)
             ->test(Dashboard::class)
-            ->assertSee('Belum ada data absensi 7 hari terakhir.')
-            ->assertSee('Belum ada data absensi hari ini.');
+            ->assertOk()
+            ->assertSee('Absensi 7 Hari Terakhir')
+            ->assertSee('Absensi Hari Ini')
+            ->assertSee('new Chart($el, config)');
+    }
+
+    public function test_guru_melihat_progres_jadwal_hari_ini(): void
+    {
+        $tahun = $this->aktifTahunAjaran();
+        $guru = User::factory()->guru()->create(['is_active' => true]);
+        $kelas = SchoolClass::factory()->create(['academic_year_id' => $tahun->id]);
+
+        $jadwalA = $this->jadwalUntuk($guru, $kelas);
+        $this->jadwalUntuk($guru, $kelas);
+
+        $siswa = Student::factory()->create(['class_id' => $kelas->id]);
+
+        Attendance::factory()->create([
+            'student_id' => $siswa->id,
+            'schedule_id' => $jadwalA->id,
+            'date' => today()->toDateString(),
+            'status' => AttendanceStatus::Hadir,
+            'recorded_by' => $guru->id,
+        ]);
+
+        Livewire::actingAs($guru)
+            ->test(Dashboard::class)
+            ->assertOk()
+            ->assertViewHas('progres', ['sudah' => 1, 'total' => 2]);
+    }
+
+    public function test_jadwal_belum_diabsen_menampilkan_badge_belum_dan_tombol_isi(): void
+    {
+        $tahun = $this->aktifTahunAjaran();
+        $guru = User::factory()->guru()->create(['is_active' => true]);
+        $kelas = SchoolClass::factory()->create(['academic_year_id' => $tahun->id]);
+
+        $jadwal = $this->jadwalUntuk($guru, $kelas);
+
+        Livewire::actingAs($guru)
+            ->test(Dashboard::class)
+            ->assertOk()
+            ->assertSee('Belum absen')
+            ->assertSee('Isi Absensi')
+            ->assertSee(route('absensi.create', $jadwal), false);
+    }
+
+    public function test_jadwal_sudah_diabsen_menampilkan_badge_sudah_dan_tombol_perbarui(): void
+    {
+        $tahun = $this->aktifTahunAjaran();
+        $guru = User::factory()->guru()->create(['is_active' => true]);
+        $kelas = SchoolClass::factory()->create(['academic_year_id' => $tahun->id]);
+
+        $jadwal = $this->jadwalUntuk($guru, $kelas);
+        $siswa = Student::factory()->create(['class_id' => $kelas->id]);
+
+        Attendance::factory()->create([
+            'student_id' => $siswa->id,
+            'schedule_id' => $jadwal->id,
+            'date' => today()->toDateString(),
+            'status' => AttendanceStatus::Hadir,
+            'recorded_by' => $guru->id,
+        ]);
+
+        Livewire::actingAs($guru)
+            ->test(Dashboard::class)
+            ->assertOk()
+            ->assertSee('Sudah absen')
+            ->assertSee('Perbarui Absensi');
+    }
+
+    public function test_guru_bukan_wali_kelas_melihat_jumlah_kelas_diampu(): void
+    {
+        $tahun = $this->aktifTahunAjaran();
+        $guru = User::factory()->guru()->create(['is_active' => true]);
+
+        $kelasA = SchoolClass::factory()->create(['academic_year_id' => $tahun->id]);
+        $kelasB = SchoolClass::factory()->create(['academic_year_id' => $tahun->id]);
+
+        $this->jadwalUntuk($guru, $kelasA);
+        $this->jadwalUntuk($guru, $kelasB);
+        // Kelas lain yang tidak diajar guru ini tidak boleh ikut terhitung.
+        $kelasLain = SchoolClass::factory()->create(['academic_year_id' => $tahun->id]);
+        $guruLain = User::factory()->guru()->create();
+        $this->jadwalUntuk($guruLain, $kelasLain);
+
+        Livewire::actingAs($guru)
+            ->test(Dashboard::class)
+            ->assertOk()
+            ->assertViewHas('kelasDiampu', 2)
+            ->assertSee('Kelas Diampu')
+            ->assertDontSee('Kelas Diawasi');
+    }
+
+    public function test_kelas_diampu_mengabaikan_tahun_ajaran_non_aktif(): void
+    {
+        $this->aktifTahunAjaran();
+        $guru = User::factory()->guru()->create(['is_active' => true]);
+
+        $tahunLain = AcademicYear::factory()->create(['is_active' => false]);
+        $kelasLain = SchoolClass::factory()->create(['academic_year_id' => $tahunLain->id]);
+        $this->jadwalUntuk($guru, $kelasLain);
+
+        Livewire::actingAs($guru)
+            ->test(Dashboard::class)
+            ->assertOk()
+            ->assertViewHas('kelasDiampu', 0);
+    }
+
+    public function test_wali_kelas_melihat_label_kelas_wali(): void
+    {
+        $tahun = $this->aktifTahunAjaran();
+        $guru = User::factory()->guru()->create(['is_active' => true]);
+
+        SchoolClass::factory()->create([
+            'academic_year_id' => $tahun->id,
+            'homeroom_teacher_id' => $guru->id,
+        ]);
+
+        Livewire::actingAs($guru)
+            ->test(Dashboard::class)
+            ->assertOk()
+            ->assertSee('Kelas Wali')
+            ->assertDontSee('Kelas Diampu');
+    }
+
+    public function test_admin_tetap_melihat_label_kelas_diawasi(): void
+    {
+        $this->aktifTahunAjaran();
+        $admin = User::factory()->admin()->create(['is_active' => true]);
+
+        Livewire::actingAs($admin)
+            ->test(Dashboard::class)
+            ->assertOk()
+            ->assertSee('Kelas Diawasi');
+    }
+
+    private function jadwalUntuk(User $guru, SchoolClass $kelas): Schedule
+    {
+        return Schedule::factory()->create([
+            'class_id' => $kelas->id,
+            'subject_id' => Subject::factory()->create()->id,
+            'teacher_id' => $guru->id,
+            'day_of_week' => DayOfWeek::from(now()->dayOfWeekIso),
+        ]);
     }
 
     private function jadwalDiTahun(AcademicYear $tahun, string $namaMapel): Schedule

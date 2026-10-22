@@ -1,8 +1,10 @@
 <?php
 
+use App\Http\Middleware\EnsurePasswordChanged;
 use App\Http\Middleware\EnsureUserIsActive;
 use App\Livewire\AdminAttendanceReport;
 use App\Livewire\AttendanceEntry;
+use App\Livewire\Auth\ChangePassword;
 use App\Livewire\Auth\Login;
 use App\Livewire\Dashboard;
 use App\Livewire\TeacherSubjectRecap;
@@ -23,7 +25,9 @@ Route::post('/logout', function () {
     return redirect()->route('login');
 })->name('logout');
 
-Route::middleware(['auth', EnsureUserIsActive::class])->group(function () {
+Route::middleware(['auth', EnsureUserIsActive::class, EnsurePasswordChanged::class])->group(function () {
+    Route::get('/ubah-password', ChangePassword::class)->name('password.change');
+
     Route::get('/dashboard', Dashboard::class)->name('dashboard');
 
     Route::get('/user', UserManagement::class)->name('user.index');

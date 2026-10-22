@@ -75,16 +75,57 @@ final class HomeroomClassRecapQuery
             ->orderBy('name')
             ->get();
 
-        $jadwal = Schedule::query()
-            ->whereIn('class_id', $kelas->pluck('id'))
-            ->with('subject')
+        $siswa = $kelas->flatMap(fn (SchoolClass $k) => $k->students);
+
+        $akhir = $period->countedEnd();
+        if ($akhir === null) {
+            $akhir = $period->end;
+        }
+
+        $baris = DB::table('attendances')
+            ->selectRaw('student_id, status, COUNT(*) as jml')
+            ->whereIn('student_id', $siswa->pluck('id'))
+            ->whereBetween('date', [$period->start->toDateString(), $akhir->toDateString()])
+            ->groupBy('student_id', 'status')
             ->get();
 
-        return $this->buildResult(
-            $kelas,
-            $jadwal,
-            $period,
-            $kelas->flatMap(fn (SchoolClass $k) => $k->students),
+        $jumlahPerSiswa = [];
+        foreach ($baris as $row) {
+            $jumlahPerSiswa[$row->student_id][$row->status] = (int) $row->jml;
+        }
+
+        $summary = ['hadir' => 0, 'izin' => 0, 'sakit' => 0, 'alpa' => 0];
+        $rows = [];
+
+        foreach ($siswa as $murid) {
+            $raw = $jumlahPerSiswa[$murid->id] ?? [];
+            $cell = [
+                'hadir' => $raw['hadir'] ?? 0,
+                'izin' => $raw['izin'] ?? 0,
+                'sakit' => $raw['sakit'] ?? 0,
+                'alpa' => $raw['alpa'] ?? 0,
+            ];
+
+            $cell['total'] = array_sum($cell);
+
+            $rows[] = [
+                'student' => $murid,
+                'class' => $murid->schoolClass,
+                'cells' => [],
+                'total' => $cell,
+            ];
+
+            foreach (array_keys($summary) as $status) {
+                $summary[$status] += $cell[$status];
+            }
+        }
+
+        return new RecapResult(
+            classes: $kelas->values(),
+            period: $period,
+            subjects: collect(),
+            rows: $rows,
+            summary: $summary,
         );
     }
 

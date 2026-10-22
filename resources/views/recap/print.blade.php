@@ -9,7 +9,7 @@
         .meta { font-size: 9px; margin-bottom: 8px; }
         table { width: 100%; border-collapse: collapse; }
         th, td { border: 1px solid #999; padding: 3px 4px; text-align: center; }
-        th { background: #f0f0f0; }
+        th { background: #276763; color: #fff; }
         td.nama, td.kelas { text-align: left; }
         .ringkasan { margin-top: 12px; font-size: 9px; }
     </style>

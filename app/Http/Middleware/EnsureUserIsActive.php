@@ -27,6 +27,7 @@ class EnsureUserIsActive
             return redirect()
                 ->route('login')
                 ->withErrors([
+                    'email' => 'Akun ini sudah dinonaktifkan. Hubungi admin.',
                     'nuptk' => 'Akun ini sudah dinonaktifkan. Hubungi admin.',
                 ]);
         }

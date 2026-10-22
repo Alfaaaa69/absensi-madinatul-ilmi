@@ -135,8 +135,8 @@ class UserManagementTest extends TestCase
             ->set('form.nuptk', '100000000000000020')
             ->set('form.email', 'dewi@sekolah.sch.id')
             ->set('form.role', UserRole::Guru->value)
-            ->set('password', 'rahasia-kuat-123')
-            ->set('password_confirmation', 'rahasia-kuat-123')
+            ->set('password', 'Rahasia-kuat-123')
+            ->set('password_confirmation', 'Rahasia-kuat-123')
             ->call('save')
             ->assertHasNoErrors();
 
@@ -145,6 +145,7 @@ class UserManagementTest extends TestCase
             'name' => 'Dewi Lestari',
             'role' => UserRole::Guru->value,
             'is_active' => true,
+            'must_change_password' => true,
         ]);
     }
 
@@ -158,14 +159,14 @@ class UserManagementTest extends TestCase
             ->set('form.name', 'Dewi Lestari')
             ->set('form.nuptk', '100000000000000020')
             ->set('form.role', UserRole::Guru->value)
-            ->set('password', 'rahasia-kuat-123')
-            ->set('password_confirmation', 'rahasia-kuat-123')
+            ->set('password', 'Rahasia-kuat-123')
+            ->set('password_confirmation', 'Rahasia-kuat-123')
             ->call('save')
             ->assertHasNoErrors();
 
         $user = User::where('nuptk', '100000000000000020')->firstOrFail();
 
-        $this->assertTrue(Hash::check('rahasia-kuat-123', $user->password));
+        $this->assertTrue(Hash::check('Rahasia-kuat-123', $user->password));
     }
 
     public function test_nuptk_duplikat_ditolak(): void
@@ -180,8 +181,8 @@ class UserManagementTest extends TestCase
             ->set('form.name', 'Orang Lain')
             ->set('form.nuptk', '100000000000000030')
             ->set('form.role', UserRole::Guru->value)
-            ->set('password', 'rahasia-kuat-123')
-            ->set('password_confirmation', 'rahasia-kuat-123')
+            ->set('password', 'Rahasia-kuat-123')
+            ->set('password_confirmation', 'Rahasia-kuat-123')
             ->call('save')
             ->assertHasErrors('form.nuptk');
     }
@@ -196,8 +197,8 @@ class UserManagementTest extends TestCase
             ->set('form.name', 'Test User')
             ->set('form.nuptk', '12345')
             ->set('form.role', UserRole::Guru->value)
-            ->set('password', 'rahasia-kuat-123')
-            ->set('password_confirmation', 'rahasia-kuat-123')
+            ->set('password', 'Rahasia-kuat-123')
+            ->set('password_confirmation', 'Rahasia-kuat-123')
             ->call('save')
             ->assertHasErrors(['form.nuptk' => 'digits']);
     }
@@ -212,7 +213,7 @@ class UserManagementTest extends TestCase
             ->set('form.name', 'Test User')
             ->set('form.nuptk', '100000000000000040')
             ->set('form.role', UserRole::Guru->value)
-            ->set('password', 'rahasia-kuat-123')
+            ->set('password', 'Rahasia-kuat-123')
             ->set('password_confirmation', 'beda-sama-456')
             ->call('save')
             ->assertHasErrors('password');
@@ -229,8 +230,8 @@ class UserManagementTest extends TestCase
             ->set('form.nuptk', '100000000000000050')
             ->set('form.email', '')
             ->set('form.role', UserRole::Guru->value)
-            ->set('password', 'rahasia-kuat-123')
-            ->set('password_confirmation', 'rahasia-kuat-123')
+            ->set('password', 'Rahasia-kuat-123')
+            ->set('password_confirmation', 'Rahasia-kuat-123')
             ->call('save')
             ->assertHasNoErrors();
 
@@ -481,8 +482,8 @@ class UserManagementTest extends TestCase
             ->set('form.name', 'Pemakai NUPTK Lama')
             ->set('form.nuptk', '100000000000000070')
             ->set('form.role', UserRole::Guru->value)
-            ->set('password', 'rahasia-kuat-123')
-            ->set('password_confirmation', 'rahasia-kuat-123')
+            ->set('password', 'Rahasia-kuat-123')
+            ->set('password_confirmation', 'Rahasia-kuat-123')
             ->call('save')
             ->assertHasErrors('form.nuptk');
     }
@@ -531,12 +532,13 @@ class UserManagementTest extends TestCase
         Livewire::actingAs($admin)
             ->test(UserManagement::class)
             ->call('startReset', $target->id)
-            ->set('password', 'password-baru-456')
-            ->set('password_confirmation', 'password-baru-456')
+            ->set('password', 'Password-baru-456')
+            ->set('password_confirmation', 'Password-baru-456')
             ->call('confirmReset')
             ->assertHasNoErrors();
 
-        $this->assertTrue(Hash::check('password-baru-456', $target->fresh()->password));
+        $this->assertTrue(Hash::check('Password-baru-456', $target->fresh()->password));
+        $this->assertTrue($target->fresh()->must_change_password);
     }
 
     public function test_reset_password_menolak_konfirmasi_yang_tidak_sama(): void
@@ -548,7 +550,7 @@ class UserManagementTest extends TestCase
         Livewire::actingAs($admin)
             ->test(UserManagement::class)
             ->call('startReset', $target->id)
-            ->set('password', 'password-baru-456')
+            ->set('password', 'Password-baru-456')
             ->set('password_confirmation', 'beda-sama-789')
             ->call('confirmReset')
             ->assertHasErrors('password');
@@ -560,18 +562,18 @@ class UserManagementTest extends TestCase
     {
         $admin = $this->admin();
         $target = User::factory()->guru()->create([
-            'password' => 'password-lama-123',
+            'password' => 'Password-lama-123',
         ]);
 
         Livewire::actingAs($admin)
             ->test(UserManagement::class)
             ->call('startReset', $target->id)
-            ->set('password', 'password-baru-456')
-            ->set('password_confirmation', 'password-baru-456')
+            ->set('password', 'Password-baru-456')
+            ->set('password_confirmation', 'Password-baru-456')
             ->call('confirmReset')
             ->assertHasNoErrors();
 
-        $this->assertFalse(Hash::check('password-lama-123', $target->fresh()->password));
+        $this->assertFalse(Hash::check('Password-lama-123', $target->fresh()->password));
     }
 
     public function test_halaman_menampilkan_user_yang_sudah_dinonaktifkan(): void

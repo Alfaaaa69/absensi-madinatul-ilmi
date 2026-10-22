@@ -21,7 +21,7 @@ class SchedulePolicy
 
     public function update(User $user, Schedule $schedule): bool
     {
-        return $user->isAdmin();
+        return $user->isAdmin() || $schedule->teacher_id === $user->id;
     }
 
     public function delete(User $user, Schedule $schedule): bool

@@ -226,6 +226,7 @@ class AttendanceEntrySaveTest extends TestCase
         ])
             ->call('simpan')
             ->assertHasNoErrors()
+            ->assertSee('Absensi Berhasil Disimpan')
             ->assertSee('Absensi tersimpan. Status siswa masih bisa diubah sampai jadwal ini lewat 1 hari.')
             ->assertDontSee('hanya bisa dilakukan oleh admin');
 
@@ -238,6 +239,7 @@ class AttendanceEntrySaveTest extends TestCase
         ])
             ->call('simpan')
             ->assertHasNoErrors()
+            ->assertSee('Absensi Berhasil Disimpan')
             ->assertSee('Absensi tersimpan. Tanggal ini sudah lewat 1 hari, jadi perbaikannya hanya bisa dilakukan oleh admin.')
             ->assertDontSee('masih bisa diubah sampai jadwal ini lewat 1 hari');
 
@@ -247,6 +249,7 @@ class AttendanceEntrySaveTest extends TestCase
         ])
             ->call('simpan')
             ->assertHasNoErrors()
+            ->assertSee('Absensi Berhasil Disimpan')
             ->assertSee('Absensi tersimpan. Tanggal ini belum tiba, jadi status siswa masih bisa diubah lagi.')
             ->assertDontSee('sampai jadwal ini lewat 1 hari');
     }

@@ -18,6 +18,26 @@ class ClassManagementTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_dropdown_wali_menandai_guru_yang_sudah_jadi_wali(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $tahun = AcademicYear::factory()->create();
+        $sudahWali = User::factory()->guru()->create(['name' => 'Guru Wali']);
+        $guruBiasa = User::factory()->guru()->create(['name' => 'Guru Biasa']);
+        SchoolClass::factory()->create([
+            'academic_year_id' => $tahun->id,
+            'name' => 'VII-A',
+            'homeroom_teacher_id' => $sudahWali->id,
+        ]);
+
+        Livewire::actingAs($admin)
+            ->test(ClassManagement::class)
+            ->set('academic_year_id', $tahun->id)
+            ->assertSee('— wali VII-A')
+            ->assertSee('Guru Biasa')
+            ->assertDontSee('Guru Biasa — wali');
+    }
+
     public function test_admin_bisa_menambah_kelas_dengan_wali_kelas(): void
     {
         $admin = User::factory()->admin()->create();

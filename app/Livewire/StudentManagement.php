@@ -42,6 +42,8 @@ class StudentManagement extends Component
 
     public bool $showArchived = false;
 
+    public bool $showFormModal = false;
+
     public int $page = 1;
 
     /**
@@ -95,6 +97,18 @@ class StudentManagement extends Component
         $this->resetValidation();
     }
 
+    public function openCreateModal(): void
+    {
+        $this->newForm();
+        $this->showFormModal = true;
+    }
+
+    public function closeModal(): void
+    {
+        $this->newForm();
+        $this->showFormModal = false;
+    }
+
     public function editForm(string $id): void
     {
         $siswa = Student::withTrashed()->findOrFail($id);
@@ -106,6 +120,7 @@ class StudentManagement extends Component
         $this->nisn = $siswa->nisn;
         $this->name = $siswa->name;
         $this->gender = $siswa->gender->value;
+        $this->showFormModal = true;
         $this->resetValidation();
     }
 
@@ -127,6 +142,7 @@ class StudentManagement extends Component
         ]);
 
         $this->newForm();
+        $this->showFormModal = false;
 
         session()->flash('sukses', $baru ? 'Siswa ditambahkan.' : 'Siswa diperbarui.');
     }
@@ -213,6 +229,9 @@ class StudentManagement extends Component
                 ->forPage($this->page, 15)
                 ->get(),
             'totalSiswa' => $this->daftarSiswa()->count(),
+            'totalAktif' => Student::count(),
+            'totalLaki' => Student::where('gender', StudentGender::L)->count(),
+            'totalPerempuan' => Student::where('gender', StudentGender::P)->count(),
         ])->title('Siswa');
     }
 

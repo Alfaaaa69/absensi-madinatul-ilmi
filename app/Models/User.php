@@ -22,6 +22,7 @@ use Illuminate\Support\Carbon;
  * @property string $nuptk
  * @property string|null $email
  * @property string $password
+ * @property bool $must_change_password
  * @property UserRole $role
  * @property bool $is_active
  * @property string|null $remember_token
@@ -34,7 +35,7 @@ class User extends Authenticatable
     /** @use HasFactory<UserFactory> */
     use HasFactory, HasUuids, SoftDeletes;
 
-    protected $fillable = ['name', 'nuptk', 'email', 'password', 'role', 'is_active'];
+    protected $fillable = ['name', 'nuptk', 'email', 'password', 'must_change_password', 'role', 'is_active'];
 
     protected $hidden = ['password', 'remember_token'];
 
@@ -47,6 +48,7 @@ class User extends Authenticatable
     {
         return [
             'password' => 'hashed',
+            'must_change_password' => 'boolean',
             'role' => UserRole::class,
             'is_active' => 'boolean',
         ];

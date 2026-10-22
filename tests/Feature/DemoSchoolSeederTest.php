@@ -31,7 +31,7 @@ class DemoSchoolSeederTest extends TestCase
         $this->assertSame(7, SchoolClass::count());
         $this->assertSame(210, Student::count());
         $this->assertSame(8, Subject::count());
-        $this->assertSame(105, Schedule::count());
+        $this->assertSame(56, Schedule::count());
         $this->assertGreaterThan(0, Attendance::count());
     }
 
@@ -121,5 +121,15 @@ class DemoSchoolSeederTest extends TestCase
         $periode = RecapPeriod::monthly(now()->year, now()->month);
 
         $this->assertTrue($periode->isWithin($tahun));
+    }
+
+    public function test_setiap_guru_maksimal_mengajar_tiga_kelas(): void
+    {
+        $this->seed(DemoSchoolSeeder::class);
+
+        foreach (User::where('role', UserRole::Guru)->get() as $guru) {
+            $jumlahKelas = $guru->taughtSchedules()->distinct()->count('class_id');
+            $this->assertLessThanOrEqual(3, $jumlahKelas, "Guru {$guru->name} mengajar {$jumlahKelas} kelas (maksimal 3)");
+        }
     }
 }

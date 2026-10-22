@@ -4,6 +4,8 @@ namespace App\Livewire;
 
 use App\Livewire\Concerns\InteractsWithRecapPeriod;
 use App\Models\AcademicYear;
+use App\Models\Schedule;
+use App\Models\SchoolClass;
 use App\Models\User;
 use App\Recap\Queries\TeacherSubjectRecapQuery;
 use App\Recap\RecapPeriod;
@@ -52,10 +54,22 @@ class TeacherSubjectRecap extends Component
         $tahun = $this->year();
         $periode = $this->period($tahun);
 
+        $jadwalPerKelas = $tahun === null ? collect() : Schedule::query()
+            ->where('teacher_id', $user->id)
+            ->whereIn('class_id', SchoolClass::query()
+                ->where('academic_year_id', $tahun->id)
+                ->select('id'))
+            ->with(['subject'])
+            ->orderBy('day_of_week')
+            ->orderBy('start_time')
+            ->get()
+            ->groupBy('class_id');
+
         return view('livewire.teacher-subject-recap', [
             'tahunAjaran' => $tahun,
             'daftarTahun' => $this->yearOptions(),
             'result' => $this->rekap($user, $tahun, $periode),
+            'jadwalPerKelas' => $jadwalPerKelas,
         ]);
     }
 

@@ -49,13 +49,11 @@ return [
     | Auth Username
     |--------------------------------------------------------------------------
     |
-    | Kolom yang dipakai sebagai identitas saat login. Aplikasi ini memakai
-    | NUPTK, bukan email: email bersifat nullable dan tidak boleh dipakai
-    | sebagai kunci login.
+    | Kolom yang dipakai sebagai identitas saat login.
     |
     */
 
-    'username' => 'nuptk',
+    'username' => 'email',
 
     /*
     |--------------------------------------------------------------------------
