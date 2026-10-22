@@ -280,7 +280,7 @@ class ScheduleManagement extends Component
             ->orderBy('name')
             ->get();
 
-        $daftar = Schedule::query()
+        $semua = Schedule::query()
             ->addSelect(['memiliki_riwayat' => Attendance::query()
                 ->selectRaw('1')
                 ->whereColumn('attendances.schedule_id', 'schedules.id')
@@ -292,25 +292,29 @@ class ScheduleManagement extends Component
             ->whereHas('schoolClass', fn ($query) => $query
                 ->withTrashed()
                 ->where('academic_year_id', $this->academic_year_id))
-            ->when($this->searchJadwal !== '', function ($query) {
-                $term = '%'.$this->searchJadwal.'%';
-                $query->where(function ($query) use ($term) {
-                    $query->whereHas('schoolClass', fn ($q) => $q->withTrashed()->where('name', 'like', $term))
-                        ->orWhereHas('subject', fn ($q) => $q->withTrashed()->where('name', 'like', $term))
-                        ->orWhereHas('teacher', fn ($q) => $q->withTrashed()->where('name', 'like', $term));
-                });
-            })
             ->with(['schoolClass', 'subject', 'teacher'])
             ->orderBy('day_of_week')
             ->orderBy('start_time')
             ->get();
+
+        // Pencarian hanya menyaring daftar, bukan grid: grid selalu memakai
+        // seluruh jadwal kelas terpilih supaya tidak kosong saat mencari.
+        $daftar = $this->searchJadwal === ''
+            ? $semua
+            : $semua->filter(function (Schedule $jadwal) {
+                $kata = mb_strtolower($this->searchJadwal);
+
+                return str_contains(mb_strtolower($jadwal->schoolClass->name), $kata)
+                    || str_contains(mb_strtolower($jadwal->subject->name), $kata)
+                    || str_contains(mb_strtolower($jadwal->teacher->name), $kata);
+            })->values();
 
         $kelasAktif = $kelasTerpilih->firstWhere('id', $this->selectedClassId)
             ?? $kelasTerpilih->first();
 
         // Jam pelajaran tiap hari bisa berbeda, jadi baris grid memakai urutan
         // jam ke-1, ke-2, dst. Jam tepatnya ditampilkan di dalam kartu.
-        $perHari = $daftar
+        $perHari = $semua
             ->where('class_id', $kelasAktif?->id)
             ->groupBy(fn (Schedule $jadwal) => $jadwal->day_of_week->value);
 
@@ -319,10 +323,8 @@ class ScheduleManagement extends Component
                 ->sortBy('start_time')
                 ->values();
 
-            return [$hari->value => $baris->mapWithKeys(function (Schedule $jadwal, int $index) use ($hari) {
-                $nomor = SchoolBreaks::periodFor($hari, $jadwal->start_time->format('H:i')) ?? $index + 1;
-
-                return [$nomor => $jadwal];
+            return [$hari->value => $baris->groupBy(function (Schedule $jadwal, int $index) use ($hari) {
+                return SchoolBreaks::periodFor($hari, $jadwal->start_time->format('H:i')) ?? $index + 1;
             })];
         });
 
@@ -335,7 +337,7 @@ class ScheduleManagement extends Component
                 $baris = [[
                     'type' => 'lesson',
                     'nomor' => $nomor,
-                    'hari' => $perHari->map(fn ($baris) => $baris->get($nomor)),
+                    'hari' => $perHari->map(fn ($baris) => $baris->get($nomor, collect())),
                 ]];
 
                 if ($adaSenin) {

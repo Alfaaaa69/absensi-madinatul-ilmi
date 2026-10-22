@@ -416,10 +416,10 @@ class ScheduleManagementTest extends TestCase
             ->viewData('grid');
 
         $this->assertCount(2, $grid);
-        $this->assertSame('Mapel A', $grid[0]['hari'][DayOfWeek::Senin->value]->subject->name);
-        $this->assertSame('Mapel C', $grid[0]['hari'][DayOfWeek::Selasa->value]->subject->name);
-        $this->assertSame('Mapel B', $grid[1]['hari'][DayOfWeek::Senin->value]->subject->name);
-        $this->assertNull($grid[1]['hari'][DayOfWeek::Selasa->value]);
+        $this->assertSame('Mapel A', $grid[0]['hari'][DayOfWeek::Senin->value]->first()->subject->name);
+        $this->assertSame('Mapel C', $grid[0]['hari'][DayOfWeek::Selasa->value]->first()->subject->name);
+        $this->assertSame('Mapel B', $grid[1]['hari'][DayOfWeek::Senin->value]->first()->subject->name);
+        $this->assertTrue($grid[1]['hari'][DayOfWeek::Selasa->value]->isEmpty());
     }
 
     public function test_grid_menampilkan_jeda_istirahat_senin(): void
@@ -450,6 +450,172 @@ class ScheduleManagementTest extends TestCase
             ->assertSee('10.05–10.35')
             ->assertSee('Istirahat / Sholat')
             ->assertSee('12.20–12.50');
+    }
+
+    public function test_grid_menaruh_jeda_setelah_jam_empat_dan_tujuh(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $kelas = SchoolClass::factory()->create();
+        $guru = User::factory()->guru()->create();
+        $mapel = Subject::factory()->create();
+
+        foreach ([
+            ['07:45', '08:20'],
+            ['08:20', '08:55'],
+            ['08:55', '09:30'],
+            ['09:30', '10:05'],
+            ['10:35', '11:10'],
+            ['11:10', '11:45'],
+            ['11:45', '12:20'],
+            ['12:50', '13:25'],
+        ] as [$mulai, $selesai]) {
+            Schedule::factory()->create([
+                'class_id' => $kelas->id,
+                'subject_id' => $mapel->id,
+                'teacher_id' => $guru->id,
+                'day_of_week' => DayOfWeek::Senin,
+                'start_time' => $mulai,
+                'end_time' => $selesai,
+            ]);
+        }
+
+        $grid = Livewire::actingAs($admin)
+            ->test(ScheduleManagement::class)
+            ->viewData('grid');
+
+        $this->assertSame(
+            ['lesson', 'lesson', 'lesson', 'lesson', 'break', 'lesson', 'lesson', 'lesson', 'break', 'lesson'],
+            $grid->pluck('type')->all(),
+        );
+        $this->assertSame(
+            [1, 2, 3, 4, 5, 6, 7, 8],
+            $grid->where('type', 'lesson')->pluck('nomor')->values()->all(),
+        );
+        $this->assertSame(4, $grid[4]['jeda']['after']);
+        $this->assertSame(7, $grid[8]['jeda']['after']);
+    }
+
+    public function test_grid_menaruh_jeda_setelah_jam_empat_dan_tujuh_meski_jam_bolong(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $kelas = SchoolClass::factory()->create();
+        $guru = User::factory()->guru()->create();
+        $mapel = Subject::factory()->create();
+
+        foreach ([
+            ['07:45', '08:20'],
+            ['08:20', '08:55'],
+            ['11:10', '11:45'],
+            ['11:45', '12:20'],
+        ] as [$mulai, $selesai]) {
+            Schedule::factory()->create([
+                'class_id' => $kelas->id,
+                'subject_id' => $mapel->id,
+                'teacher_id' => $guru->id,
+                'day_of_week' => DayOfWeek::Senin,
+                'start_time' => $mulai,
+                'end_time' => $selesai,
+            ]);
+        }
+
+        $grid = Livewire::actingAs($admin)
+            ->test(ScheduleManagement::class)
+            ->viewData('grid');
+
+        $this->assertSame(
+            ['lesson', 'lesson', 'lesson', 'lesson', 'break', 'lesson', 'lesson', 'lesson', 'break'],
+            $grid->pluck('type')->all(),
+        );
+        $this->assertSame(4, $grid[4]['jeda']['after']);
+        $this->assertSame(7, $grid[8]['jeda']['after']);
+    }
+
+    public function test_grid_tidak_menampilkan_jeda_pada_hari_selasa(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $kelas = SchoolClass::factory()->create();
+        $guru = User::factory()->guru()->create();
+        $mapel = Subject::factory()->create();
+
+        Schedule::factory()->create([
+            'class_id' => $kelas->id,
+            'subject_id' => $mapel->id,
+            'teacher_id' => $guru->id,
+            'day_of_week' => DayOfWeek::Selasa,
+            'start_time' => '10:15',
+            'end_time' => '10:45',
+        ]);
+
+        $grid = Livewire::actingAs($admin)
+            ->test(ScheduleManagement::class)
+            ->viewData('grid');
+
+        $this->assertSame(['lesson'], $grid->pluck('type')->all());
+    }
+
+    public function test_grid_tidak_kehilangan_mapel_saat_jam_bertabrakan(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $kelas = SchoolClass::factory()->create();
+        $guru = User::factory()->guru()->create();
+
+        foreach ([
+            ['07:00', '07:35', 'Mapel Satu'],
+            ['07:35', '08:10', 'Mapel Dua'],
+            ['08:10', '08:45', 'Mapel Tiga'],
+            ['08:55', '09:30', 'Mapel Empat'],
+        ] as [$mulai, $selesai, $nama]) {
+            Schedule::factory()->create([
+                'class_id' => $kelas->id,
+                'subject_id' => Subject::factory()->create(['name' => $nama])->id,
+                'teacher_id' => $guru->id,
+                'day_of_week' => DayOfWeek::Senin,
+                'start_time' => $mulai,
+                'end_time' => $selesai,
+            ]);
+        }
+
+        $grid = Livewire::actingAs($admin)
+            ->test(ScheduleManagement::class)
+            ->viewData('grid');
+
+        $subjects = $grid
+            ->where('type', 'lesson')
+            ->flatMap(fn ($slot) => $slot['hari']->flatMap(fn ($cell) => $cell))
+            ->map(fn (Schedule $jadwal) => $jadwal->subject->name)
+            ->values()
+            ->all();
+
+        $this->assertCount(4, $subjects);
+        $this->assertContains('Mapel Satu', $subjects);
+        $this->assertContains('Mapel Dua', $subjects);
+        $this->assertContains('Mapel Tiga', $subjects);
+        $this->assertContains('Mapel Empat', $subjects);
+    }
+
+    public function test_pencarian_tidak_mengosongkan_grid_kelas_terpilih(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $tahun = AcademicYear::factory()->create();
+        $alpha = SchoolClass::factory()->create(['academic_year_id' => $tahun->id, 'name' => 'KELAS-ALPHA']);
+        $beta = SchoolClass::factory()->create(['academic_year_id' => $tahun->id, 'name' => 'KELAS-BETA']);
+
+        Schedule::factory()->create([
+            'class_id' => $alpha->id,
+            'subject_id' => Subject::factory()->create(['name' => 'Mapel Alpha'])->id,
+        ]);
+        Schedule::factory()->create([
+            'class_id' => $beta->id,
+            'subject_id' => Subject::factory()->create(['name' => 'Mapel Beta'])->id,
+        ]);
+
+        Livewire::actingAs($admin)
+            ->test(ScheduleManagement::class)
+            ->set('academic_year_id', $tahun->id)
+            ->set('selectedClassId', $alpha->id)
+            ->set('searchJadwal', 'BETA')
+            ->assertSee('Kelas KELAS-ALPHA')
+            ->assertDontSee('Belum ada jadwal untuk kelas ini.');
     }
 
     public function test_guru_bisa_mengajar_hingga_tiga_kelas_berbeda(): void

@@ -28,13 +28,7 @@ final class ScheduleManager
         $guru = User::findOrFail($data['teacher_id']);
         $hari = DayOfWeek::from((int) $data['day_of_week']);
 
-        $jeda = SchoolBreaks::overlap($hari, $data['start_time'], $data['end_time']);
-
-        if ($jeda !== null) {
-            throw ValidationException::withMessages([
-                'start_time' => "Jam {$jeda['start']}–{$jeda['end']} dipakai untuk {$jeda['label']}.",
-            ]);
-        }
+        $this->validasiJeda($hari, $data['start_time'], $data['end_time']);
 
         $this->validasiBatasKelas($guru, $data['class_id'], $schedule?->id);
 
@@ -74,7 +68,24 @@ final class ScheduleManager
 
     public function pulihkan(Schedule $schedule): void
     {
+        $this->validasiJeda(
+            $schedule->day_of_week,
+            $schedule->start_time->format('H:i'),
+            $schedule->end_time->format('H:i'),
+        );
+
         $schedule->restore();
+    }
+
+    private function validasiJeda(DayOfWeek $hari, string $startTime, string $endTime): void
+    {
+        $jeda = SchoolBreaks::overlap($hari, $startTime, $endTime);
+
+        if ($jeda !== null) {
+            throw ValidationException::withMessages([
+                'start_time' => "Jam {$jeda['start']}–{$jeda['end']} dipakai untuk {$jeda['label']}.",
+            ]);
+        }
     }
 
     /**
