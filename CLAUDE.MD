@@ -10,7 +10,11 @@ Sistem absensi sekolah berbasis web untuk kegiatan PKM (Pengabdian kepada Masyar
 Skema database, role & scoping, dan batasan platform ditentukan di `docs/specs/2026-09-26-sistem-absensi-sekolah-design.md`. **Spec itu yang menang** kalau ada conflicts dengan PRD atau ERD.
 
 ## Status project
-Belum ada kode. Repo baru diinisialisasi 2026-09-26 dan saat itu hanya berisi `docs/`. Skema akan dibuat dari nol di Fase 1 — `database/migrations/` **belum ada**.
+Aplikasi sudah diimplementasikan. Migrasi, model, Livewire component, policy, service, dan test sudah ada di repo. Branch pengembangan terbaru: `feat/plan-5-jadwal`.
+
+Fitur utama yang sudah jalan: login email, manajemen user/kelas/mapel/tahun ajaran, jadwal, absensi, rekap wali kelas/guru/admin, export Excel/PDF, dan kewajiban ganti password untuk akun baru/reset dari admin.
+
+Data demo diisi lewat `php artisan migrate --seed`. Seeder jadwal Senin ada di `SchoolTimetableSeeder`, `MondayScheduleSeeder`, dan `MondayScheduleCSeeder`.
 
 ## Tech stack
 - Laravel 13 + Livewire 4 untuk seluruh UI — tidak pakai REST API terpisah/SPA
@@ -22,11 +26,13 @@ Belum ada kode. Repo baru diinisialisasi 2026-09-26 dan saat itu hanya berisi `d
 - Testing: **PHPUnit 12** (ikut bawaan starter kit), **bukan Pest**. Filter test pakai `php artisan test --filter=NamaTest`
 
 ## Autentikasi
-- Login memakai **NUPTK** (`users.nuptk`, unique, NOT NULL) — bukan email
-- `users.email` nullable, hanya untuk kontak/arsip, **tidak dipakai login**
+- Login memakai **email** (`users.email`), bukan NUPTK. NUPTK tetap dipakai sebagai identitas guru/siswa
+- `users.email` nullable dan unique; akun tanpa email tidak bisa login, jadi admin wajib mengisi email saat membuat akun
 - **Registrasi dimatikan** — `routes/register.php` dihapus, hanya admin yang membuat akun
 - **Reset password via admin** dari menu user, bukan via email. Form "lupa password" bawaan dihapus
+- Password dari admin (akun baru atau hasil reset) bersifat sementara: `users.must_change_password = true` memaksa pengguna membuka `/ubah-password` sebelum mengakses halaman data
 - `users.is_active = false` → login ditolak dengan pesan jelas, bukan error 403
+- Aturan password: production minimal 12 karakter, campuran huruf besar/kecil, angka, simbol, dan tidak pernah bocor; lokal/test minimal 8 karakter, campuran huruf besar/kecil dan angka
 
 ## Role & akses
 Tiga jenis pengguna, semua dalam satu tabel `users` dibedakan lewat kolom `role`:
@@ -49,7 +55,7 @@ Tiga Query Object di `app/Recap/Queries/` — semua mengembalikan struktur array
 - Penulisan ke database lewat service, bukan langsung dari component — supaya bisa diuji tanpa browser dan tidak bisa bypass policy. Contoh: `app/Services/AttendanceRecorder.php`
 
 ## Skema database
-Rujuk ke spec §3 dan `docs/erd.MD`. Tujuh tabel: `users`, `academic_years`, `classes`, `subjects`, `schedules`, `students`, `attendances`.
+Rujuk ke spec §3 dan `docs/erd.MD`. Tujuh tabel domain: `users`, `academic_years`, `classes`, `subjects`, `schedules`, `students`, `attendances`.
 
 Kasus khusus yang mudah salah:
 - `classes` **wajib** punya `academic_year_id` — kelas dibuat ulang tiap tahun ajaran, kelas yang sama di tahun berbeda = baris berbeda
@@ -64,6 +70,8 @@ composer install
 cp .env.example .env
 php artisan key:generate
 php artisan migrate --seed
+npm install
+npm run build
 php artisan serve
 ```
 
