@@ -12,6 +12,8 @@ final class SchoolBreaks
     public static function forDay(DayOfWeek $day): array
     {
         return $day === DayOfWeek::Senin ? [
+            // after 0 = sebelum jam pelajaran pertama.
+            ['after' => 0, 'label' => 'Upacara', 'start' => '07:30', 'end' => '07:45'],
             ['after' => 4, 'label' => 'Istirahat', 'start' => '10:05', 'end' => '10:35'],
             ['after' => 7, 'label' => 'Istirahat / Sholat', 'start' => '12:20', 'end' => '12:50'],
         ] : [];

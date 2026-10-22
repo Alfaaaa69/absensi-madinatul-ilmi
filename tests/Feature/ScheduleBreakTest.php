@@ -60,6 +60,29 @@ class ScheduleBreakTest extends TestCase
         $this->assertSame(0, Schedule::count());
     }
 
+    public function test_jadwal_senin_yang_menabrak_upacara_ditolak(): void
+    {
+        try {
+            app(ScheduleManager::class)->save(null, $this->data('1', '07:30', '08:00'));
+
+            $this->fail('Jadwal seharusnya ditolak karena menabrak Upacara.');
+        } catch (ValidationException $e) {
+            $this->assertSame(
+                'Jam 07:30–07:45 dipakai untuk Upacara.',
+                $e->errors()['start_time'][0],
+            );
+        }
+
+        $this->assertSame(0, Schedule::count());
+    }
+
+    public function test_jadwal_senin_tepat_setelah_upacara_diterima(): void
+    {
+        app(ScheduleManager::class)->save(null, $this->data('1', '07:45', '08:20'));
+
+        $this->assertSame(1, Schedule::count());
+    }
+
     public function test_jadwal_senin_yang_diubah_ke_jam_istirahat_ditolak(): void
     {
         $data = $this->data('1', '09:30', '10:05');

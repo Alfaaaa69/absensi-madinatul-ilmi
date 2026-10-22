@@ -88,7 +88,7 @@
                             @if ($slot['type'] === 'break')
                                 <tr>
                                     <th class="sticky left-0 z-10 border-b border-zinc-100 bg-zinc-50 px-3 py-2 text-left text-[11px] font-medium text-zinc-500 dark:border-zinc-800 dark:bg-zinc-800/50 dark:text-zinc-400">
-                                        Jeda
+                                        {{ $slot['jeda']['after'] === 0 ? 'Upacara' : 'Jeda' }}
                                     </th>
                                     <td colspan="{{ count($hari) }}" class="border-b border-zinc-100 bg-zinc-50 px-3 py-2 dark:border-zinc-800 dark:bg-zinc-800/50">
                                         <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-500 dark:text-zinc-400">

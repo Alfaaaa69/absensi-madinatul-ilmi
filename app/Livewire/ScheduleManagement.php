@@ -333,23 +333,29 @@ class ScheduleManagement extends Component
         $adaSenin = $perHari->get(DayOfWeek::Senin->value)->isNotEmpty();
 
         $grid = $jumlahBaris > 0
-            ? collect(range(1, $jumlahBaris))->flatMap(function (int $nomor) use ($perHari, $jedaSenin, $adaSenin) {
-                $baris = [[
-                    'type' => 'lesson',
-                    'nomor' => $nomor,
-                    'hari' => $perHari->map(fn ($baris) => $baris->get($nomor, collect())),
-                ]];
+            ? collect(range(1, $jumlahBaris))
+                ->flatMap(function (int $nomor) use ($perHari, $jedaSenin, $adaSenin) {
+                    $baris = [[
+                        'type' => 'lesson',
+                        'nomor' => $nomor,
+                        'hari' => $perHari->map(fn ($baris) => $baris->get($nomor, collect())),
+                    ]];
 
-                if ($adaSenin) {
-                    foreach ($jedaSenin as $jeda) {
-                        if ($jeda['after'] === $nomor) {
-                            $baris[] = ['type' => 'break', 'jeda' => $jeda];
+                    if ($adaSenin) {
+                        foreach ($jedaSenin as $jeda) {
+                            if ($jeda['after'] === $nomor) {
+                                $baris[] = ['type' => 'break', 'jeda' => $jeda];
+                            }
                         }
                     }
-                }
 
-                return $baris;
-            })
+                    return $baris;
+                })
+                ->when($adaSenin, function ($grid) use ($jedaSenin) {
+                    $upacara = collect($jedaSenin)->firstWhere('after', 0);
+
+                    return $upacara === null ? $grid : $grid->prepend(['type' => 'break', 'jeda' => $upacara]);
+                })
             : collect();
 
         return view('livewire.schedule-management', [

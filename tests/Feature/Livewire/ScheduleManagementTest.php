@@ -36,8 +36,8 @@ class ScheduleManagementTest extends TestCase
             ->set('subject_id', $mapel->id)
             ->set('teacher_id', $guru->id)
             ->set('day_of_week', '1')
-            ->set('start_time', '07:00')
-            ->set('end_time', '08:30')
+            ->set('start_time', '07:45')
+            ->set('end_time', '09:15')
             ->call('save')
             ->assertHasNoErrors();
 
@@ -47,8 +47,8 @@ class ScheduleManagementTest extends TestCase
         $this->assertSame($mapel->id, $jadwal->subject_id);
         $this->assertSame($guru->id, $jadwal->teacher_id);
         $this->assertSame(DayOfWeek::Senin, $jadwal->day_of_week);
-        $this->assertSame('07:00', $jadwal->start_time->format('H:i'));
-        $this->assertSame('08:30', $jadwal->end_time->format('H:i'));
+        $this->assertSame('07:45', $jadwal->start_time->format('H:i'));
+        $this->assertSame('09:15', $jadwal->end_time->format('H:i'));
     }
 
     public function test_jadwal_bentrok_ditolak(): void
@@ -143,7 +143,7 @@ class ScheduleManagementTest extends TestCase
                 'subject_id' => $mapel->id,
                 'teacher_id' => $guru->id,
                 'day_of_week' => '1',
-                'start_time' => '07:30',
+                'start_time' => '07:45',
                 'end_time' => '09:30',
             ]);
 
@@ -231,12 +231,12 @@ class ScheduleManagementTest extends TestCase
         Livewire::actingAs($admin)
             ->test(ScheduleManagement::class)
             ->call('editForm', $jadwal->id)
-            ->set('start_time', '07:30')
-            ->set('end_time', '09:00')
+            ->set('start_time', '07:45')
+            ->set('end_time', '09:15')
             ->call('save')
             ->assertHasNoErrors();
 
-        $this->assertSame('07:30', $jadwal->fresh()->start_time->format('H:i'));
+        $this->assertSame('07:45', $jadwal->fresh()->start_time->format('H:i'));
     }
 
     public function test_jadwal_tanpa_absensi_dihapus_permanen_dan_membebaskan_slot(): void
@@ -415,11 +415,13 @@ class ScheduleManagementTest extends TestCase
             ->test(ScheduleManagement::class)
             ->viewData('grid');
 
-        $this->assertCount(2, $grid);
-        $this->assertSame('Mapel A', $grid[0]['hari'][DayOfWeek::Senin->value]->first()->subject->name);
-        $this->assertSame('Mapel C', $grid[0]['hari'][DayOfWeek::Selasa->value]->first()->subject->name);
-        $this->assertSame('Mapel B', $grid[1]['hari'][DayOfWeek::Senin->value]->first()->subject->name);
-        $this->assertTrue($grid[1]['hari'][DayOfWeek::Selasa->value]->isEmpty());
+        $this->assertCount(3, $grid);
+        $this->assertSame('break', $grid[0]['type']);
+        $this->assertSame('Upacara', $grid[0]['jeda']['label']);
+        $this->assertSame('Mapel A', $grid[1]['hari'][DayOfWeek::Senin->value]->first()->subject->name);
+        $this->assertSame('Mapel C', $grid[1]['hari'][DayOfWeek::Selasa->value]->first()->subject->name);
+        $this->assertSame('Mapel B', $grid[2]['hari'][DayOfWeek::Senin->value]->first()->subject->name);
+        $this->assertTrue($grid[2]['hari'][DayOfWeek::Selasa->value]->isEmpty());
     }
 
     public function test_grid_menampilkan_jeda_istirahat_senin(): void
@@ -450,6 +452,32 @@ class ScheduleManagementTest extends TestCase
             ->assertSee('10.05–10.35')
             ->assertSee('Istirahat / Sholat')
             ->assertSee('12.20–12.50');
+    }
+
+    public function test_grid_menampilkan_upacara_diatas_jam_pertama(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $kelas = SchoolClass::factory()->create();
+        $guru = User::factory()->guru()->create();
+        $mapel = Subject::factory()->create();
+
+        Schedule::factory()->create([
+            'class_id' => $kelas->id,
+            'subject_id' => $mapel->id,
+            'teacher_id' => $guru->id,
+            'day_of_week' => DayOfWeek::Senin,
+            'start_time' => '07:45',
+            'end_time' => '08:20',
+        ]);
+
+        $grid = Livewire::actingAs($admin)
+            ->test(ScheduleManagement::class)
+            ->viewData('grid');
+
+        $this->assertSame('break', $grid[0]['type']);
+        $this->assertSame('Upacara', $grid[0]['jeda']['label']);
+        $this->assertSame('lesson', $grid[1]['type']);
+        $this->assertSame(1, $grid[1]['nomor']);
     }
 
     public function test_grid_menaruh_jeda_setelah_jam_empat_dan_tujuh(): void
@@ -484,15 +512,15 @@ class ScheduleManagementTest extends TestCase
             ->viewData('grid');
 
         $this->assertSame(
-            ['lesson', 'lesson', 'lesson', 'lesson', 'break', 'lesson', 'lesson', 'lesson', 'break', 'lesson'],
+            ['break', 'lesson', 'lesson', 'lesson', 'lesson', 'break', 'lesson', 'lesson', 'lesson', 'break', 'lesson'],
             $grid->pluck('type')->all(),
         );
         $this->assertSame(
             [1, 2, 3, 4, 5, 6, 7, 8],
             $grid->where('type', 'lesson')->pluck('nomor')->values()->all(),
         );
-        $this->assertSame(4, $grid[4]['jeda']['after']);
-        $this->assertSame(7, $grid[8]['jeda']['after']);
+        $this->assertSame(4, $grid[5]['jeda']['after']);
+        $this->assertSame(7, $grid[9]['jeda']['after']);
     }
 
     public function test_grid_menaruh_jeda_setelah_jam_empat_dan_tujuh_meski_jam_bolong(): void
@@ -523,11 +551,11 @@ class ScheduleManagementTest extends TestCase
             ->viewData('grid');
 
         $this->assertSame(
-            ['lesson', 'lesson', 'lesson', 'lesson', 'break', 'lesson', 'lesson', 'lesson', 'break'],
+            ['break', 'lesson', 'lesson', 'lesson', 'lesson', 'break', 'lesson', 'lesson', 'lesson', 'break'],
             $grid->pluck('type')->all(),
         );
-        $this->assertSame(4, $grid[4]['jeda']['after']);
-        $this->assertSame(7, $grid[8]['jeda']['after']);
+        $this->assertSame(4, $grid[5]['jeda']['after']);
+        $this->assertSame(7, $grid[9]['jeda']['after']);
     }
 
     public function test_grid_tidak_menampilkan_jeda_pada_hari_selasa(): void
