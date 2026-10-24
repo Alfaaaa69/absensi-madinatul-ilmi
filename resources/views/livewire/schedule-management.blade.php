@@ -48,6 +48,11 @@
         </label>
 
         <p class="text-xs text-zinc-500 dark:text-zinc-400">Klik kartu jadwal untuk mengubah.</p>
+
+        <a href="{{ route('master.jeda') }}" wire:navigate
+            class="rounded border border-zinc-300 px-3 py-1.5 text-sm text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800">
+            Atur Jeda
+        </a>
     </div>
 
     @if ($kelasAktif)

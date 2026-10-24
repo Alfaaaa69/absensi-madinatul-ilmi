@@ -59,6 +59,17 @@ class SidebarTest extends TestCase
             ->assertSee('Manajemen User');
     }
 
+    public function test_admin_melihat_link_atur_jeda(): void
+    {
+        $admin = User::factory()->admin()->create(['is_active' => true]);
+
+        $this->actingAs($admin)
+            ->get('/halaman-uji-sidebar')
+            ->assertOk()
+            ->assertSee('Jeda')
+            ->assertSee(route('master.jeda'), escape: false);
+    }
+
     public function test_link_repository_dan_dokumentasi_starter_kit_dihapus(): void
     {
         $admin = User::factory()->admin()->create(['is_active' => true]);
