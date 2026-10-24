@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Enums\DayOfWeek;
+use App\Models\SchoolBreak;
 
 final class SchoolBreaks
 {
@@ -11,12 +12,18 @@ final class SchoolBreaks
      */
     public static function forDay(DayOfWeek $day): array
     {
-        return $day === DayOfWeek::Senin ? [
-            // after 0 = sebelum jam pelajaran pertama.
-            ['after' => 0, 'label' => 'Upacara', 'start' => '07:00', 'end' => '07:45'],
-            ['after' => 4, 'label' => 'Istirahat', 'start' => '10:05', 'end' => '10:35'],
-            ['after' => 7, 'label' => 'Istirahat / Sholat', 'start' => '12:20', 'end' => '12:50'],
-        ] : [];
+        return SchoolBreak::query()
+            ->where('day_of_week', $day->value)
+            ->orderBy('after')
+            ->orderBy('start_time')
+            ->get()
+            ->map(fn (SchoolBreak $break) => [
+                'after' => $break->after,
+                'label' => $break->label,
+                'start' => $break->start_time->format('H:i'),
+                'end' => $break->end_time->format('H:i'),
+            ])
+            ->all();
     }
 
     public static function periodFor(DayOfWeek $day, string $startTime): ?int
