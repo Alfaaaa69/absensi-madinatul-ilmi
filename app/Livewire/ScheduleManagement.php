@@ -328,34 +328,34 @@ class ScheduleManagement extends Component
             })];
         });
 
-        $jumlahBaris = $perHari->max(fn ($baris) => $baris->keys()->max() ?? 0);
-        $jedaSenin = SchoolBreaks::forDay(DayOfWeek::Senin);
-        $adaSenin = $perHari->get(DayOfWeek::Senin->value)->isNotEmpty();
+        $jedaPerPosisi = collect(DayOfWeek::cases())
+            ->flatMap(fn (DayOfWeek $hari) => collect(SchoolBreaks::forDay($hari))
+                ->map(fn (array $jeda) => [...$jeda, 'day' => $hari]))
+            ->groupBy('after');
+
+        $jumlahBaris = max(
+            $perHari->max(fn ($baris) => $baris->keys()->max() ?? 0) ?? 0,
+            $jedaPerPosisi->keys()->max() ?? 0,
+        );
+
+        $slotJeda = fn (int $nomor) => ['type' => 'break', 'jeda' => $jedaPerPosisi->get($nomor, collect())];
 
         $grid = $jumlahBaris > 0
             ? collect(range(1, $jumlahBaris))
-                ->flatMap(function (int $nomor) use ($perHari, $jedaSenin, $adaSenin) {
+                ->flatMap(function (int $nomor) use ($perHari, $jedaPerPosisi, $slotJeda) {
                     $baris = [[
                         'type' => 'lesson',
                         'nomor' => $nomor,
                         'hari' => $perHari->map(fn ($baris) => $baris->get($nomor, collect())),
                     ]];
 
-                    if ($adaSenin) {
-                        foreach ($jedaSenin as $jeda) {
-                            if ($jeda['after'] === $nomor) {
-                                $baris[] = ['type' => 'break', 'jeda' => $jeda];
-                            }
-                        }
+                    if ($jedaPerPosisi->has($nomor)) {
+                        $baris[] = $slotJeda($nomor);
                     }
 
                     return $baris;
                 })
-                ->when($adaSenin, function ($grid) use ($jedaSenin) {
-                    $upacara = collect($jedaSenin)->firstWhere('after', 0);
-
-                    return $upacara === null ? $grid : $grid->prepend(['type' => 'break', 'jeda' => $upacara]);
-                })
+                ->when($jedaPerPosisi->has(0), fn ($grid) => $grid->prepend($slotJeda(0)))
             : collect();
 
         return view('livewire.schedule-management', [
