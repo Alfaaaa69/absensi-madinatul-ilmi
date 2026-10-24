@@ -480,6 +480,45 @@ class ScheduleManagementTest extends TestCase
         $this->assertSame(1, $grid[1]['nomor']);
     }
 
+    public function test_jam_mulai_di_luar_tabel_tetap_masuk_jam_terdekat_sebelumnya(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $kelas = SchoolClass::factory()->create();
+        $guru = User::factory()->guru()->create();
+
+        foreach ([
+            ['07:45', '08:20', 'Jam Satu'],
+            ['08:20', '08:55', 'Jam Dua'],
+            ['08:55', '09:30', 'Jam Tiga'],
+            ['11:10', '11:45', 'Jam Enam'],
+            ['11:45', '12:20', 'Jam Tujuh'],
+            ['12:50', '13:35', 'Jam Delapan'],
+            ['13:35', '14:20', 'Jam Sembilan'],
+        ] as [$mulai, $selesai, $nama]) {
+            Schedule::factory()->create([
+                'class_id' => $kelas->id,
+                'subject_id' => Subject::factory()->create(['name' => $nama])->id,
+                'teacher_id' => $guru->id,
+                'day_of_week' => DayOfWeek::Senin,
+                'start_time' => $mulai,
+                'end_time' => $selesai,
+            ]);
+        }
+
+        $grid = Livewire::actingAs($admin)
+            ->test(ScheduleManagement::class)
+            ->viewData('grid');
+
+        $perNomor = $grid->where('type', 'lesson')
+            ->keyBy('nomor')
+            ->map(fn ($slot) => $slot['hari'][DayOfWeek::Senin->value]
+                ->map(fn (Schedule $jadwal) => $jadwal->subject->name)
+                ->all());
+
+        $this->assertSame(['Jam Tujuh'], $perNomor[7]);
+        $this->assertSame(['Jam Sembilan'], $perNomor[9]);
+    }
+
     public function test_grid_menaruh_jeda_setelah_jam_empat_dan_tujuh(): void
     {
         $admin = User::factory()->admin()->create();

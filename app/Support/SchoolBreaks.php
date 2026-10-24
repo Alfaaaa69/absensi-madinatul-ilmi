@@ -13,7 +13,7 @@ final class SchoolBreaks
     {
         return $day === DayOfWeek::Senin ? [
             // after 0 = sebelum jam pelajaran pertama.
-            ['after' => 0, 'label' => 'Upacara', 'start' => '07:30', 'end' => '07:45'],
+            ['after' => 0, 'label' => 'Upacara', 'start' => '07:00', 'end' => '07:45'],
             ['after' => 4, 'label' => 'Istirahat', 'start' => '10:05', 'end' => '10:35'],
             ['after' => 7, 'label' => 'Istirahat / Sholat', 'start' => '12:20', 'end' => '12:50'],
         ] : [];
@@ -25,7 +25,12 @@ final class SchoolBreaks
             return null;
         }
 
-        return match (substr($startTime, 0, 5)) {
+        $jam = substr($startTime, 0, 5);
+        $nomor = null;
+
+        // Jam mulai di luar tabel (mis. 13:35) ikut jam terdekat sebelumnya,
+        // supaya tidak jatuh ke nomor urut yang sudah dipakai jam lain.
+        foreach ([
             '07:45' => 1,
             '08:20' => 2,
             '08:55' => 3,
@@ -35,8 +40,13 @@ final class SchoolBreaks
             '11:45' => 7,
             '12:50' => 8,
             '13:25' => 9,
-            default => null,
-        };
+        ] as $mulai => $slot) {
+            if ($mulai <= $jam) {
+                $nomor = $slot;
+            }
+        }
+
+        return $nomor;
     }
 
     /**

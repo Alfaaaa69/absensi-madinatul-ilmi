@@ -68,7 +68,7 @@ class ScheduleBreakTest extends TestCase
             $this->fail('Jadwal seharusnya ditolak karena menabrak Upacara.');
         } catch (ValidationException $e) {
             $this->assertSame(
-                'Jam 07:30–07:45 dipakai untuk Upacara.',
+                'Jam 07:00–07:45 dipakai untuk Upacara.',
                 $e->errors()['start_time'][0],
             );
         }
