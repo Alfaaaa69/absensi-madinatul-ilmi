@@ -73,6 +73,23 @@ class SchoolBreakManagementTest extends TestCase
             ->assertHasErrors(['end_time']);
     }
 
+    public function test_hapus_jeda_yang_sedang_diedit_mengosongkan_form(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $jeda = SchoolBreak::factory()->create([
+            'day_of_week' => DayOfWeek::Selasa,
+            'start_time' => '09:00',
+            'end_time' => '09:15',
+        ]);
+
+        Livewire::actingAs($admin)
+            ->test(SchoolBreakManagement::class)
+            ->call('editForm', $jeda->id)
+            ->call('hapus', $jeda->id)
+            ->assertSet('editingId', null)
+            ->assertSet('label', '');
+    }
+
     public function test_guru_tidak_bisa_membuka_halaman_jeda(): void
     {
         $guru = User::factory()->guru()->create();

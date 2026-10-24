@@ -102,6 +102,10 @@ class SchoolBreakManagement extends Component
 
         app(SchoolBreakManager::class)->hapus($jeda);
 
+        if ($this->editingId === $id) {
+            $this->newForm();
+        }
+
         session()->flash('sukses', 'Jeda dihapus.');
     }
 

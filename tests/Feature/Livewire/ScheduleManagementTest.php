@@ -543,6 +543,39 @@ class ScheduleManagementTest extends TestCase
         );
     }
 
+    public function test_jeda_jumat_tampil_di_kolom_jumat(): void
+    {
+        $admin = User::factory()->admin()->create();
+        SchoolClass::factory()->create();
+        SchoolBreak::factory()->create([
+            'day_of_week' => DayOfWeek::Jumat,
+            'label' => 'Yasinan Bersama',
+            'start_time' => '07:00',
+            'end_time' => '07:45',
+            'after' => 0,
+        ]);
+
+        $html = Livewire::actingAs($admin)->test(ScheduleManagement::class)->html();
+
+        $this->assertSame(1, preg_match('/data-jeda-hari="5"[^>]*>(.*?)<\/td>/s', $html, $jumat));
+        $this->assertStringContainsString('Yasinan Bersama', $jumat[1]);
+
+        $this->assertSame(1, preg_match('/data-jeda-hari="1"[^>]*>(.*?)<\/td>/s', $html, $senin));
+        $this->assertStringNotContainsString('Yasinan Bersama', $senin[1]);
+    }
+
+    public function test_jeda_sebelum_jam_pertama_tetap_tampil_tanpa_jadwal(): void
+    {
+        $admin = User::factory()->admin()->create();
+        SchoolClass::factory()->create();
+        SchoolBreak::where('after', '>', 0)->delete();
+
+        $grid = Livewire::actingAs($admin)->test(ScheduleManagement::class)->viewData('grid');
+
+        $this->assertSame('break', $grid->first()['type']);
+        $this->assertSame(0, $grid->first()['jeda']->first()['after']);
+    }
+
     public function test_hari_tanpa_jeda_tidak_ikut_di_baris_jeda(): void
     {
         $admin = User::factory()->admin()->create();

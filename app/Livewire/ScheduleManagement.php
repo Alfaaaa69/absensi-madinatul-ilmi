@@ -340,7 +340,7 @@ class ScheduleManagement extends Component
 
         $slotJeda = fn (int $nomor) => ['type' => 'break', 'jeda' => $jedaPerPosisi->get($nomor, collect())];
 
-        $grid = $jumlahBaris > 0
+        $grid = ($jumlahBaris > 0
             ? collect(range(1, $jumlahBaris))
                 ->flatMap(function (int $nomor) use ($perHari, $jedaPerPosisi, $slotJeda) {
                     $baris = [[
@@ -355,8 +355,8 @@ class ScheduleManagement extends Component
 
                     return $baris;
                 })
-                ->when($jedaPerPosisi->has(0), fn ($grid) => $grid->prepend($slotJeda(0)))
-            : collect();
+            : collect())
+            ->when($jedaPerPosisi->has(0), fn ($grid) => $grid->prepend($slotJeda(0)));
 
         return view('livewire.schedule-management', [
             'tahunAjaran' => AcademicYear::query()->orderByDesc('start_date')->get(),
