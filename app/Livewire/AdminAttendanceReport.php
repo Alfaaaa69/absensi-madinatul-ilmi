@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use App\Livewire\Concerns\InteractsWithRecapPeriod;
 use App\Models\AcademicYear;
+use App\Models\SchoolClass;
 use App\Recap\Queries\AdminRecapQuery;
 use App\Recap\RecapExporter;
 use App\Recap\RecapPeriod;
@@ -37,6 +38,9 @@ class AdminAttendanceReport extends Component
 {
     use InteractsWithRecapPeriod;
 
+    /** Kelas yang sedang dibuka; null berarti daftar kartu kelas. */
+    public ?string $kelasId = null;
+
     /**
      * @return array<string,list<string>>
      */
@@ -52,15 +56,62 @@ class AdminAttendanceReport extends Component
         $this->initializeRecap();
     }
 
+    public function pilihKelas(string $kelasId): void
+    {
+        Gate::authorize('viewAnyRecap');
+
+        $this->kelasId = $kelasId;
+    }
+
+    public function kembali(): void
+    {
+        $this->kelasId = null;
+    }
+
+    /**
+     * Ganti periode membuat daftar kelas bisa berubah; kembali ke kartu supaya
+     * kelas dari tahun ajaran lama tidak tertinggal di layar.
+     */
+    public function updated(string $property, mixed $value = null): void
+    {
+        if (in_array($property, ['academicYearId', 'periodType', 'month', 'date'], true)) {
+            $this->kelasId = null;
+        }
+    }
+
     public function render(): View
     {
         $tahun = $this->year();
         $periode = $this->period($tahun);
+        $hasil = $this->rekap($tahun, $periode);
+
+        $kelasTerpilih = null;
+        $detail = null;
+        $jumlahSiswa = collect();
+
+        if ($hasil !== null) {
+            $jumlahSiswa = $hasil->rows->countBy(fn (array $baris) => $baris['class']->id);
+
+            $kelasTerpilih = $this->kelasId === null
+                ? null
+                : $hasil->classes->firstWhere('id', $this->kelasId);
+
+            if ($this->kelasId !== null && $kelasTerpilih === null) {
+                $this->kelasId = null;
+            }
+
+            if ($kelasTerpilih !== null) {
+                $detail = $this->detailKelas($hasil, $kelasTerpilih);
+            }
+        }
 
         return view('livewire.admin-attendance-report', [
             'tahunAjaran' => $tahun,
             'daftarTahun' => $this->yearOptions(),
-            'result' => $this->rekap($tahun, $periode),
+            'result' => $hasil,
+            'kelasTerpilih' => $kelasTerpilih,
+            'detail' => $detail,
+            'jumlahSiswa' => $jumlahSiswa,
         ]);
     }
 
@@ -116,6 +167,33 @@ class AdminAttendanceReport extends Component
         }
 
         return $hasil;
+    }
+
+    /**
+     * Matriks satu kelas memakai query yang sama; cukup saring baris dan
+     * jumlahkan ulang ringkasannya, tanpa query database kedua.
+     */
+    private function detailKelas(RecapResult $hasil, SchoolClass $kelas): RecapResult
+    {
+        $rows = $hasil->rows
+            ->filter(fn (array $baris) => $baris['class']->id === $kelas->id)
+            ->values();
+
+        $summary = ['hadir' => 0, 'izin' => 0, 'sakit' => 0, 'alpa' => 0];
+
+        foreach ($rows as $baris) {
+            foreach (array_keys($summary) as $status) {
+                $summary[$status] += $baris['total'][$status];
+            }
+        }
+
+        return new RecapResult(
+            classes: collect([$kelas]),
+            period: $hasil->period,
+            subjects: $hasil->subjects,
+            rows: $rows->all(),
+            summary: $summary,
+        );
     }
 
     /**

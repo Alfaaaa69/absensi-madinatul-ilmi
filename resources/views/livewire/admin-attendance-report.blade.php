@@ -36,11 +36,59 @@
             <p class="text-sm text-zinc-600 dark:text-zinc-400">Tidak ada kelas pada tahun ajaran ini.</p>
         @elseif ($result->rows->isEmpty())
             <p class="text-sm text-zinc-600 dark:text-zinc-400">Kelas ada, tetapi belum ada siswa terdaftar.</p>
+        @elseif ($kelasTerpilih)
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <button
+                        type="button"
+                        wire:click="kembali"
+                        class="text-sm font-medium text-madrasah-700 hover:underline dark:text-madrasah-300"
+                    >
+                        ← Daftar kelas
+                    </button>
+
+                    <h3 class="mt-1 text-base font-semibold text-zinc-900 dark:text-zinc-100">
+                        Kelas {{ $kelasTerpilih->name }}
+                    </h3>
+                    <p class="text-xs text-zinc-500 dark:text-zinc-400">
+                        Wali kelas: {{ $kelasTerpilih->homeroomTeacher?->name ?? 'Belum ditentukan' }}
+                    </p>
+                </div>
+            </div>
+
+            @if ($detail->rows->isEmpty())
+                <p class="text-sm text-zinc-600 dark:text-zinc-400">Belum ada siswa terdaftar di kelas ini.</p>
+            @else
+                @include('recap.partials.matrix', ['result' => $detail])
+            @endif
         @else
-            {{-- Kalimat "tidak ada data absensi" dan baris ringkasan datang
-                 dari partial matriks, supaya ketiga halaman rekap menampilkan
-                 hal yang sama persis. --}}
-            @include('recap.partials.matrix', ['result' => $result])
+            @include('recap.partials.cutoff', ['result' => $result])
+
+            @if (! $result->hasData())
+                <p class="mb-2 text-sm text-zinc-600 dark:text-zinc-400">@include('recap.partials.kosong')</p>
+            @endif
+
+            <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                @foreach ($result->classes as $kelas)
+                    <button
+                        type="button"
+                        wire:click="pilihKelas('{{ $kelas->id }}')"
+                        class="rounded-xl border border-zinc-200 bg-white p-4 text-left transition hover:border-madrasah-300 hover:bg-madrasah-50/40 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-madrasah-600 dark:hover:bg-zinc-800"
+                    >
+                        <span class="block text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                            {{ $kelas->name }}
+                        </span>
+                        <span class="mt-1 block text-xs text-zinc-500 dark:text-zinc-400">
+                            Wali: {{ $kelas->homeroomTeacher?->name ?? 'Belum ditentukan' }}
+                        </span>
+                        <span class="mt-1 block text-xs text-zinc-500 dark:text-zinc-400">
+                            {{ $jumlahSiswa[$kelas->id] ?? 0 }} siswa
+                        </span>
+                    </button>
+                @endforeach
+            </div>
+
+            @include('recap.partials.summary', ['result' => $result])
         @endif
     @endif
 </div>

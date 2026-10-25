@@ -22,8 +22,28 @@ class AdminAttendanceReportTest extends TestCase
         RecapScenario::siswaDi($lain, 'Siti Rahma');
 
         Livewire::actingAs(User::factory()->admin()->create())->test(AdminAttendanceReport::class)
-            ->assertSee('VII-A')->assertSee('Ahmad Fauzi')
-            ->assertSee('IX-B')->assertSee('Siti Rahma');
+            ->assertSee('VII-A')
+            ->assertSee('IX-B')
+            ->assertDontSee('Ahmad Fauzi')
+            ->assertDontSee('Siti Rahma')
+            ->call('pilihKelas', $s->kelas->id)
+            ->assertSee('Ahmad Fauzi')
+            ->assertDontSee('Siti Rahma')
+            ->call('kembali')
+            ->assertSee('VII-A')
+            ->assertDontSee('Ahmad Fauzi');
+    }
+
+    public function test_ganti_periode_kembali_ke_daftar_kelas(): void
+    {
+        $s = RecapScenario::waliKelas();
+
+        Livewire::actingAs(User::factory()->admin()->create())->test(AdminAttendanceReport::class)
+            ->call('pilihKelas', $s->kelas->id)
+            ->assertSet('kelasId', $s->kelas->id)
+            ->set('month', '2025-08')
+            ->assertSet('kelasId', null)
+            ->assertDontSee('Ahmad Fauzi');
     }
 
     public function test_guru_ditolak_membuka_laporan_admin(): void

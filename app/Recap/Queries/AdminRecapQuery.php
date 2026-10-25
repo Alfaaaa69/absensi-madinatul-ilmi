@@ -49,6 +49,7 @@ final class AdminRecapQuery
         $kelas = SchoolClass::query()
             ->where('academic_year_id', $this->academicYear->id)
             ->when($this->schoolClass, fn ($query) => $query->whereKey($this->schoolClass->id))
+            ->with('homeroomTeacher')
             ->orderBy('name')
             ->get();
 
