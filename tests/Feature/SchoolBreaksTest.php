@@ -16,14 +16,19 @@ class SchoolBreaksTest extends TestCase
     {
         $this->assertSame([
             ['after' => 0, 'label' => 'Upacara', 'start' => '07:00', 'end' => '07:45'],
-            ['after' => 4, 'label' => 'Istirahat', 'start' => '10:05', 'end' => '10:35'],
+            ['after' => 4, 'label' => 'Istirahat', 'start' => '10:10', 'end' => '10:25'],
             ['after' => 7, 'label' => 'Istirahat / Sholat', 'start' => '12:20', 'end' => '12:50'],
         ], SchoolBreaks::forDay(DayOfWeek::Senin));
     }
 
-    public function test_hari_lain_tanpa_jeda_mengembalikan_array_kosong(): void
+    public function test_istirahat_ada_di_setiap_hari_sekolah(): void
     {
-        $this->assertSame([], SchoolBreaks::forDay(DayOfWeek::Selasa));
+        foreach ([DayOfWeek::Selasa, DayOfWeek::Rabu, DayOfWeek::Kamis, DayOfWeek::Jumat] as $hari) {
+            $this->assertSame([
+                ['after' => 2, 'label' => 'Istirahat', 'start' => '10:10', 'end' => '10:25'],
+                ['after' => 3, 'label' => 'Istirahat / Sholat', 'start' => '11:45', 'end' => '12:25'],
+            ], SchoolBreaks::forDay($hari));
+        }
     }
 
     public function test_jeda_baru_dari_database_ikut_terbaca(): void
@@ -38,6 +43,8 @@ class SchoolBreaksTest extends TestCase
 
         $this->assertSame([
             ['after' => 2, 'label' => 'Jeda Rabu', 'start' => '09:00', 'end' => '09:15'],
+            ['after' => 2, 'label' => 'Istirahat', 'start' => '10:10', 'end' => '10:25'],
+            ['after' => 3, 'label' => 'Istirahat / Sholat', 'start' => '11:45', 'end' => '12:25'],
         ], SchoolBreaks::forDay(DayOfWeek::Rabu));
     }
 

@@ -452,7 +452,7 @@ class ScheduleManagementTest extends TestCase
         Livewire::actingAs($admin)
             ->test(ScheduleManagement::class)
             ->assertSee('Istirahat')
-            ->assertSee('10.05–10.35')
+            ->assertSee('10.10–10.25')
             ->assertSee('Istirahat / Sholat')
             ->assertSee('12.20–12.50');
     }
@@ -537,10 +537,8 @@ class ScheduleManagementTest extends TestCase
 
         $barisJeda = $grid->where('type', 'break')
             ->first(fn ($slot) => $slot['jeda']->first()['after'] === 4);
-        $this->assertSame(
-            [DayOfWeek::Senin, DayOfWeek::Selasa],
-            $barisJeda['jeda']->pluck('day')->all(),
-        );
+
+        $this->assertSame([DayOfWeek::Senin, DayOfWeek::Selasa], $barisJeda['jeda']->pluck('day')->all());
     }
 
     public function test_jeda_jumat_tampil_di_kolom_jumat(): void
@@ -564,6 +562,25 @@ class ScheduleManagementTest extends TestCase
         $this->assertStringNotContainsString('Yasinan Bersama', $senin[1]);
     }
 
+    public function test_istirahat_tampil_di_setiap_hari(): void
+    {
+        $admin = User::factory()->admin()->create();
+        SchoolClass::factory()->create();
+
+        $grid = Livewire::actingAs($admin)->test(ScheduleManagement::class)->viewData('grid');
+
+        $hariJeda = $grid->where('type', 'break')
+            ->flatMap(fn ($slot) => $slot['jeda'])
+            ->filter(fn (array $jeda) => $jeda['label'] === 'Istirahat')
+            ->pluck('day')
+            ->unique()
+            ->sortBy('value')
+            ->values()
+            ->all();
+
+        $this->assertSame(DayOfWeek::cases(), $hariJeda);
+    }
+
     public function test_jeda_sebelum_jam_pertama_tetap_tampil_tanpa_jadwal(): void
     {
         $admin = User::factory()->admin()->create();
@@ -581,14 +598,14 @@ class ScheduleManagementTest extends TestCase
         $admin = User::factory()->admin()->create();
         SchoolBreak::factory()->create([
             'day_of_week' => DayOfWeek::Selasa,
-            'start_time' => '09:00',
-            'end_time' => '09:15',
-            'after' => 2,
+            'start_time' => '13:00',
+            'end_time' => '13:15',
+            'after' => 5,
         ]);
 
         $grid = Livewire::actingAs($admin)->test(ScheduleManagement::class)->viewData('grid');
         $baris = $grid->where('type', 'break')
-            ->first(fn ($slot) => $slot['jeda']->first()['after'] === 2);
+            ->first(fn ($slot) => $slot['jeda']->first()['after'] === 5);
 
         $this->assertSame([DayOfWeek::Selasa], $baris['jeda']->pluck('day')->all());
     }
@@ -625,15 +642,16 @@ class ScheduleManagementTest extends TestCase
             ->viewData('grid');
 
         $this->assertSame(
-            ['break', 'lesson', 'lesson', 'lesson', 'lesson', 'break', 'lesson', 'lesson', 'lesson', 'break', 'lesson'],
-            $grid->pluck('type')->all(),
+            [0, 2, 3, 4, 7],
+            $grid->where('type', 'break')
+                ->map(fn ($slot) => $slot['jeda']->first()['after'])
+                ->values()
+                ->all(),
         );
         $this->assertSame(
             [1, 2, 3, 4, 5, 6, 7, 8],
             $grid->where('type', 'lesson')->pluck('nomor')->values()->all(),
         );
-        $this->assertSame(4, $grid[5]['jeda']->first()['after']);
-        $this->assertSame(7, $grid[9]['jeda']->first()['after']);
     }
 
     public function test_grid_menaruh_jeda_setelah_jam_empat_dan_tujuh_meski_jam_bolong(): void
@@ -664,14 +682,15 @@ class ScheduleManagementTest extends TestCase
             ->viewData('grid');
 
         $this->assertSame(
-            ['break', 'lesson', 'lesson', 'lesson', 'lesson', 'break', 'lesson', 'lesson', 'lesson', 'break'],
-            $grid->pluck('type')->all(),
+            [0, 2, 3, 4, 7],
+            $grid->where('type', 'break')
+                ->map(fn ($slot) => $slot['jeda']->first()['after'])
+                ->values()
+                ->all(),
         );
-        $this->assertSame(4, $grid[5]['jeda']->first()['after']);
-        $this->assertSame(7, $grid[9]['jeda']->first()['after']);
     }
 
-    public function test_grid_tidak_menampilkan_jeda_pada_hari_selasa(): void
+    public function test_selasa_hanya_menampilkan_istirahat(): void
     {
         $admin = User::factory()->admin()->create();
         $kelas = SchoolClass::factory()->create();
@@ -691,14 +710,14 @@ class ScheduleManagementTest extends TestCase
             ->test(ScheduleManagement::class)
             ->viewData('grid');
 
-        $hariJeda = $grid->where('type', 'break')
-            ->flatMap(fn ($slot) => $slot['jeda'])
-            ->pluck('day')
-            ->unique()
-            ->values()
-            ->all();
-
-        $this->assertNotContains(DayOfWeek::Selasa, $hariJeda);
+        $this->assertSame(
+            ['Istirahat', 'Istirahat / Sholat'],
+            $grid->where('type', 'break')
+                ->flatMap(fn ($slot) => $slot['jeda'])
+                ->where('day', DayOfWeek::Selasa)
+                ->pluck('label')
+                ->all(),
+        );
     }
 
     public function test_grid_tidak_kehilangan_mapel_saat_jam_bertabrakan(): void

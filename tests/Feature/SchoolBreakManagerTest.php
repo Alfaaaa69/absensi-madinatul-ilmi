@@ -23,9 +23,9 @@ class SchoolBreakManagerTest extends TestCase
         return [
             'day_of_week' => '2',
             'label' => 'Istirahat',
-            'start_time' => '10:00',
-            'end_time' => '10:15',
-            'after' => 4,
+            'start_time' => '08:00',
+            'end_time' => '08:15',
+            'after' => 2,
             ...$ubah,
         ];
     }
@@ -34,8 +34,8 @@ class SchoolBreakManagerTest extends TestCase
     {
         Schedule::factory()->create([
             'day_of_week' => DayOfWeek::Selasa,
-            'start_time' => '10:10',
-            'end_time' => '10:40',
+            'start_time' => '08:10',
+            'end_time' => '08:40',
         ]);
 
         try {
@@ -45,16 +45,16 @@ class SchoolBreakManagerTest extends TestCase
             $this->assertStringContainsString('dipakai jadwal', $e->errors()['start_time'][0]);
         }
 
-        $this->assertSame(0, SchoolBreak::where('day_of_week', DayOfWeek::Selasa->value)->count());
+        $this->assertSame(2, SchoolBreak::where('day_of_week', DayOfWeek::Selasa->value)->count());
     }
 
     public function test_jeda_bentrok_jeda_lain_ditolak(): void
     {
         SchoolBreak::factory()->create([
             'day_of_week' => DayOfWeek::Selasa,
-            'start_time' => '10:10',
-            'end_time' => '10:30',
-            'after' => 4,
+            'start_time' => '08:10',
+            'end_time' => '08:30',
+            'after' => 2,
         ]);
 
         $this->expectException(ValidationException::class);
@@ -66,21 +66,21 @@ class SchoolBreakManagerTest extends TestCase
     {
         Schedule::factory()->create([
             'day_of_week' => DayOfWeek::Selasa,
-            'start_time' => '10:15',
-            'end_time' => '10:45',
+            'start_time' => '08:15',
+            'end_time' => '08:45',
         ]);
 
         app(SchoolBreakManager::class)->save(null, $this->data());
 
-        $this->assertSame(1, SchoolBreak::where('day_of_week', DayOfWeek::Selasa->value)->count());
+        $this->assertSame(3, SchoolBreak::where('day_of_week', DayOfWeek::Selasa->value)->count());
     }
 
     public function test_jeda_yang_diubah_tidak_bentrok_dengan_dirinya_sendiri(): void
     {
         $jeda = SchoolBreak::factory()->create([
             'day_of_week' => DayOfWeek::Selasa,
-            'start_time' => '10:00',
-            'end_time' => '10:15',
+            'start_time' => '08:00',
+            'end_time' => '08:15',
         ]);
 
         app(SchoolBreakManager::class)->save($jeda, $this->data([
@@ -94,8 +94,8 @@ class SchoolBreakManagerTest extends TestCase
     {
         $jeda = SchoolBreak::factory()->create([
             'day_of_week' => DayOfWeek::Selasa,
-            'start_time' => '10:00',
-            'end_time' => '10:15',
+            'start_time' => '08:00',
+            'end_time' => '08:15',
         ]);
 
         app(SchoolBreakManager::class)->hapus($jeda);
@@ -107,8 +107,8 @@ class SchoolBreakManagerTest extends TestCase
             'subject_id' => Subject::factory()->create()->id,
             'teacher_id' => User::factory()->guru()->create()->id,
             'day_of_week' => '2',
-            'start_time' => '10:00',
-            'end_time' => '10:15',
+            'start_time' => '08:00',
+            'end_time' => '08:15',
         ]);
 
         $this->assertSame(1, Schedule::count());

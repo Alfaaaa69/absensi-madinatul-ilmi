@@ -36,7 +36,7 @@ class ScheduleBreakTest extends TestCase
             $this->fail('Jadwal seharusnya ditolak karena menabrak istirahat.');
         } catch (ValidationException $e) {
             $this->assertSame(
-                'Jam 10:05–10:35 dipakai untuk Istirahat.',
+                'Jam 10:10–10:25 dipakai untuk Istirahat.',
                 $e->errors()['start_time'][0],
             );
         }
@@ -98,7 +98,7 @@ class ScheduleBreakTest extends TestCase
             $this->fail('Jadwal seharusnya ditolak karena menabrak istirahat.');
         } catch (ValidationException $e) {
             $this->assertSame(
-                'Jam 10:05–10:35 dipakai untuk Istirahat.',
+                'Jam 10:10–10:25 dipakai untuk Istirahat.',
                 $e->errors()['start_time'][0],
             );
         }
@@ -137,7 +137,7 @@ class ScheduleBreakTest extends TestCase
             $this->fail('Jadwal seharusnya tidak dipulihkan karena menabrak istirahat.');
         } catch (ValidationException $e) {
             $this->assertSame(
-                'Jam 10:05–10:35 dipakai untuk Istirahat.',
+                'Jam 10:10–10:25 dipakai untuk Istirahat.',
                 $e->errors()['start_time'][0],
             );
         }
@@ -145,9 +145,9 @@ class ScheduleBreakTest extends TestCase
         $this->assertSoftDeleted('schedules', ['id' => $jadwal->id]);
     }
 
-    public function test_jadwal_selasa_pada_jam_yang_sama_tidak_terkunci(): void
+    public function test_jadwal_selasa_di_luar_istirahat_tetap_bisa(): void
     {
-        app(ScheduleManager::class)->save(null, $this->data('2', '10:15', '10:45'));
+        app(ScheduleManager::class)->save(null, $this->data('2', '11:00', '11:30'));
 
         $this->assertSame(1, Schedule::count());
     }
