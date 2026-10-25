@@ -25,8 +25,8 @@ class SchoolBreaksTest extends TestCase
     {
         foreach ([DayOfWeek::Selasa, DayOfWeek::Rabu, DayOfWeek::Kamis, DayOfWeek::Jumat] as $hari) {
             $this->assertSame([
-                ['after' => 2, 'label' => 'Istirahat / Dhuha', 'start' => '10:10', 'end' => '10:25'],
-                ['after' => 3, 'label' => 'Istirahat / Dzuhur', 'start' => '11:45', 'end' => '12:25'],
+                ['after' => 4, 'label' => 'Istirahat / Dhuha', 'start' => '10:10', 'end' => '10:25'],
+                ['after' => 7, 'label' => 'Istirahat / Dzuhur', 'start' => '11:45', 'end' => '12:25'],
             ], SchoolBreaks::forDay($hari));
         }
     }
@@ -43,8 +43,8 @@ class SchoolBreaksTest extends TestCase
 
         $this->assertSame([
             ['after' => 2, 'label' => 'Jeda Rabu', 'start' => '09:00', 'end' => '09:15'],
-            ['after' => 2, 'label' => 'Istirahat / Dhuha', 'start' => '10:10', 'end' => '10:25'],
-            ['after' => 3, 'label' => 'Istirahat / Dzuhur', 'start' => '11:45', 'end' => '12:25'],
+            ['after' => 4, 'label' => 'Istirahat / Dhuha', 'start' => '10:10', 'end' => '10:25'],
+            ['after' => 7, 'label' => 'Istirahat / Dzuhur', 'start' => '11:45', 'end' => '12:25'],
         ], SchoolBreaks::forDay(DayOfWeek::Rabu));
     }
 

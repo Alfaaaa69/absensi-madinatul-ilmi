@@ -538,7 +538,7 @@ class ScheduleManagementTest extends TestCase
         $barisJeda = $grid->where('type', 'break')
             ->first(fn ($slot) => $slot['jeda']->first()['after'] === 4);
 
-        $this->assertSame([DayOfWeek::Senin, DayOfWeek::Selasa], $barisJeda['jeda']->pluck('day')->all());
+        $this->assertSame(DayOfWeek::cases(), $barisJeda['jeda']->pluck('day')->unique()->values()->all());
     }
 
     public function test_jeda_jumat_tampil_di_kolom_jumat(): void
@@ -642,7 +642,7 @@ class ScheduleManagementTest extends TestCase
             ->viewData('grid');
 
         $this->assertSame(
-            [0, 2, 3, 4, 7],
+            [0, 4, 7],
             $grid->where('type', 'break')
                 ->map(fn ($slot) => $slot['jeda']->first()['after'])
                 ->values()
@@ -682,7 +682,7 @@ class ScheduleManagementTest extends TestCase
             ->viewData('grid');
 
         $this->assertSame(
-            [0, 2, 3, 4, 7],
+            [0, 4, 7],
             $grid->where('type', 'break')
                 ->map(fn ($slot) => $slot['jeda']->first()['after'])
                 ->values()
