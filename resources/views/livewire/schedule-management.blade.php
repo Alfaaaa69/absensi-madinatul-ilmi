@@ -92,14 +92,14 @@
                         @forelse ($grid as $slot)
                             @if ($slot['type'] === 'break')
                                 <tr>
-                                    <th class="sticky left-0 z-10 border-y-2 border-amber-300 bg-amber-50 px-3 py-2 text-left text-[11px] font-semibold text-amber-800 dark:border-amber-700 dark:bg-amber-400/10 dark:text-amber-200">
+                                    <th class="sticky left-0 z-10 border-y-2 border-amber-300 bg-amber-50 px-3 py-2 text-center text-[11px] font-semibold text-amber-800 dark:border-amber-700 dark:bg-amber-400/10 dark:text-amber-200">
                                         Jeda
                                     </th>
                                     @foreach ($hari as $item)
-                                        <td data-jeda-hari="{{ $item->value }}" class="border-y-2 border-amber-300 bg-amber-50 px-3 py-2 align-top dark:border-amber-700 dark:bg-amber-400/10">
+                                        <td data-jeda-hari="{{ $item->value }}" class="border-y-2 border-amber-300 bg-amber-50 px-3 py-2 text-center align-middle dark:border-amber-700 dark:bg-amber-400/10">
                                             @forelse ($slot['jeda']->filter(fn ($jeda) => $jeda['day'] === $item) as $jeda)
                                                 <div @class([
-                                                    'flex flex-wrap items-center gap-x-2 text-xs text-amber-700 dark:text-amber-300',
+                                                    'flex flex-wrap items-center justify-center gap-x-2 text-xs text-amber-700 dark:text-amber-300',
                                                     'mt-1' => ! $loop->first,
                                                 ])>
                                                     <span class="font-semibold text-amber-900 dark:text-amber-100">{{ $jeda['label'] }}</span>

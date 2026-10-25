@@ -36,7 +36,7 @@ class ScheduleBreakTest extends TestCase
             $this->fail('Jadwal seharusnya ditolak karena menabrak istirahat.');
         } catch (ValidationException $e) {
             $this->assertSame(
-                'Jam 10:10–10:25 dipakai untuk Istirahat.',
+                'Jam 10:10–10:25 dipakai untuk Istirahat / Dhuha.',
                 $e->errors()['start_time'][0],
             );
         }
@@ -52,7 +52,7 @@ class ScheduleBreakTest extends TestCase
             $this->fail('Jadwal seharusnya ditolak karena menabrak istirahat.');
         } catch (ValidationException $e) {
             $this->assertSame(
-                'Jam 12:20–12:50 dipakai untuk Istirahat / Sholat.',
+                'Jam 12:20–12:50 dipakai untuk Istirahat / Dzuhur.',
                 $e->errors()['start_time'][0],
             );
         }
@@ -98,7 +98,7 @@ class ScheduleBreakTest extends TestCase
             $this->fail('Jadwal seharusnya ditolak karena menabrak istirahat.');
         } catch (ValidationException $e) {
             $this->assertSame(
-                'Jam 10:10–10:25 dipakai untuk Istirahat.',
+                'Jam 10:10–10:25 dipakai untuk Istirahat / Dhuha.',
                 $e->errors()['start_time'][0],
             );
         }
@@ -137,7 +137,7 @@ class ScheduleBreakTest extends TestCase
             $this->fail('Jadwal seharusnya tidak dipulihkan karena menabrak istirahat.');
         } catch (ValidationException $e) {
             $this->assertSame(
-                'Jam 10:10–10:25 dipakai untuk Istirahat.',
+                'Jam 10:10–10:25 dipakai untuk Istirahat / Dhuha.',
                 $e->errors()['start_time'][0],
             );
         }

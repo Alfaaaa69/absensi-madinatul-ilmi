@@ -451,9 +451,9 @@ class ScheduleManagementTest extends TestCase
 
         Livewire::actingAs($admin)
             ->test(ScheduleManagement::class)
-            ->assertSee('Istirahat')
+            ->assertSee('Istirahat / Dhuha')
             ->assertSee('10.10–10.25')
-            ->assertSee('Istirahat / Sholat')
+            ->assertSee('Istirahat / Dzuhur')
             ->assertSee('12.20–12.50');
     }
 
@@ -571,7 +571,7 @@ class ScheduleManagementTest extends TestCase
 
         $hariJeda = $grid->where('type', 'break')
             ->flatMap(fn ($slot) => $slot['jeda'])
-            ->filter(fn (array $jeda) => $jeda['label'] === 'Istirahat')
+            ->filter(fn (array $jeda) => $jeda['label'] === 'Istirahat / Dhuha')
             ->pluck('day')
             ->unique()
             ->sortBy('value')
@@ -711,7 +711,7 @@ class ScheduleManagementTest extends TestCase
             ->viewData('grid');
 
         $this->assertSame(
-            ['Istirahat', 'Istirahat / Sholat'],
+            ['Istirahat / Dhuha', 'Istirahat / Dzuhur'],
             $grid->where('type', 'break')
                 ->flatMap(fn ($slot) => $slot['jeda'])
                 ->where('day', DayOfWeek::Selasa)
