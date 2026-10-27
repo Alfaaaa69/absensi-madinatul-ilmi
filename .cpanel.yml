@@ -1,0 +1,9 @@
+---
+deployment:
+  tasks:
+    - export APP=/home/moqubsiw/absensi_app
+    - export PUB=/home/moqubsiw/public_html
+    - /bin/rsync -av --exclude='.git' --exclude='.env' --exclude='storage' --exclude='vendor' --exclude='public' --exclude='node_modules' --exclude='.cpanel.yml' ./ $APP/
+    - /bin/rsync -av --exclude='index.php' --exclude='.htaccess' --exclude='uploads' --exclude='images' ./public/ $PUB/
+    - /bin/rm -rf $APP/bootstrap/cache/*.php
+    - /bin/rm -rf $APP/storage/framework/views/*.php
