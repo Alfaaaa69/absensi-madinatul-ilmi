@@ -61,7 +61,7 @@ class AttendanceEntryLoadTest extends TestCase
 
         Livewire::test(AttendanceEntry::class, ['schedule' => $jadwal])
             ->assertOk()
-            ->assertSee('Tanggal absensi dikunci')
+            ->assertSee('Tanggal absensi:')
             ->assertSee('Senin, 28 September 2026')
             ->assertSet('tanggal', today());
     }
@@ -110,7 +110,7 @@ class AttendanceEntryLoadTest extends TestCase
             ->assertSeeInOrder(
                 [
                     '<h1',
-                    'Absensi '.$jadwal->subject->name.' - Kelas '.$jadwal->schoolClass->name,
+                    $jadwal->subject->name,
                     '</h1>',
                 ],
                 escape: false,
@@ -196,7 +196,8 @@ class AttendanceEntryLoadTest extends TestCase
             ->assertSet('sudahDisimpan', true)
             ->assertSet('status.'.$siswa->id, 'sakit')
             ->assertSet('note.'.$siswa->id, 'Demam sejak pagi')
-            ->assertSee('value="sakit" selected', false);
+            ->assertSee("'sakit')\"", false)
+            ->assertSee('bg-amber-500', false);
     }
 
     public function test_tombol_menjadi_simpan_perubahan_setelah_absensi_ada(): void

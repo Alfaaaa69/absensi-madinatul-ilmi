@@ -454,6 +454,36 @@ class AttendanceEntry extends Component
     {
         return view('livewire.attendance-entry', [
             'tanggal' => $this->tanggal,
+            // Palet status dipakai dua kali di view: tab ringkasan dan tombol
+            // status tiap baris. Disusun di sini supaya warna tetap satu sumber.
+            'statusWarna' => [
+                'hadir' => [
+                    'netral' => 'bg-white text-zinc-600 hover:bg-zinc-50 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800',
+                    'aktif' => 'bg-emerald-600 text-white',
+                ],
+                'izin' => [
+                    'netral' => 'bg-white text-zinc-600 hover:bg-zinc-50 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800',
+                    'aktif' => 'bg-sky-600 text-white',
+                ],
+                'sakit' => [
+                    'netral' => 'bg-white text-zinc-600 hover:bg-zinc-50 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800',
+                    'aktif' => 'bg-amber-500 text-white',
+                ],
+                'alpa' => [
+                    'netral' => 'bg-white text-zinc-600 hover:bg-zinc-50 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800',
+                    'aktif' => 'bg-red-600 text-white',
+                ],
+                'netral' => [
+                    'netral' => 'text-zinc-500',
+                    'aktif' => 'bg-zinc-700 text-white',
+                ],
+            ],
+            'ringkasanWarna' => [
+                'hadir' => 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300',
+                'izin' => 'bg-sky-100 text-sky-800 dark:bg-sky-500/15 dark:text-sky-300',
+                'sakit' => 'bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300',
+                'alpa' => 'bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-300',
+            ],
             // Query ini hanya dibayar saat halamannya memang terkunci. Halaman
             // yang formnya terbuka tidak pernah membaca daftar admin, jadi
             // tidak perlu membayarnya di setiap request.

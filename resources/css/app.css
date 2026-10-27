@@ -93,6 +93,12 @@ select:focus[data-flux-control] {
     @apply outline-hidden ring-2 ring-accent ring-offset-2 ring-offset-accent-foreground;
 }
 
+/* Scrim di belakang sidebar mobile di-hardcode Flux sebagai bg-black/10 —
+   nyaris tak terlihat di mode terang. Dipergelapan agar panel tegas. */
+[data-flux-sidebar-backdrop] {
+    background-color: rgb(0 0 0 / 0.45) !important;
+}
+
 /* \[:where(&)\]:size-4 {
     @apply size-4;
 } */
