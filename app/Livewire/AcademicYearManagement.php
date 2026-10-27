@@ -48,6 +48,9 @@ class AcademicYearManagement extends Component
     public function mount(): void
     {
         Gate::authorize('viewAny', AcademicYear::class);
+
+        $this->start_date = now()->toDateString();
+        $this->end_date = now()->toDateString();
     }
 
     public function newForm(): void
@@ -55,8 +58,8 @@ class AcademicYearManagement extends Component
         $this->editingId = null;
         $this->name = '';
         $this->period = AcademicPeriod::Ganjil->value;
-        $this->start_date = '';
-        $this->end_date = '';
+        $this->start_date = now()->toDateString();
+        $this->end_date = now()->toDateString();
         $this->is_active = false;
         $this->resetValidation();
     }

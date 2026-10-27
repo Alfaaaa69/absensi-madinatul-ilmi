@@ -44,11 +44,19 @@ class Schedule extends Model
     }
 
     /**
+     * Kelas, mapel, dan guru yang diarsipkan tidak boleh membuat jadwal ini
+     * error atau hilang dari daftar. Jadwal adalah riwayat, dan riwayat harus
+     * tetap bisa menyebut siapa yang mengajar di kelas apa.
+     *
+     * Karena itu relasi di sini selalu withTrashed(). Kalau suatu saat sebuah
+     * jadwal benar-benar tidak boleh menampilkan master yang diarsipkan,
+     * saring di level query.
+     *
      * @return BelongsTo<SchoolClass, $this>
      */
     public function schoolClass(): BelongsTo
     {
-        return $this->belongsTo(SchoolClass::class, 'class_id');
+        return $this->belongsTo(SchoolClass::class, 'class_id')->withTrashed();
     }
 
     /**
@@ -56,7 +64,7 @@ class Schedule extends Model
      */
     public function subject(): BelongsTo
     {
-        return $this->belongsTo(Subject::class);
+        return $this->belongsTo(Subject::class)->withTrashed();
     }
 
     /**
@@ -64,7 +72,7 @@ class Schedule extends Model
      */
     public function teacher(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'teacher_id');
+        return $this->belongsTo(User::class, 'teacher_id')->withTrashed();
     }
 
     /**

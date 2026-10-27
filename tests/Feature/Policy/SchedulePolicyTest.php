@@ -72,4 +72,28 @@ class SchedulePolicyTest extends TestCase
         $this->assertTrue($policy->recordAttendance($admin, $jadwal, Carbon::today()->subYear()));
         $this->assertTrue($policy->recordAttendance($admin, $jadwal, Carbon::today()->addYear()));
     }
+
+    public function test_admin_dapat_mengedit_jadwal(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $jadwal = Schedule::factory()->create();
+
+        $this->assertTrue(app(SchedulePolicy::class)->update($admin, $jadwal));
+    }
+
+    public function test_guru_dapat_mengedit_jadwal_yang_dia_ajar(): void
+    {
+        $guru = User::factory()->guru()->create();
+        $jadwal = Schedule::factory()->create(['teacher_id' => $guru->id]);
+
+        $this->assertTrue(app(SchedulePolicy::class)->update($guru, $jadwal));
+    }
+
+    public function test_guru_tidak_dapat_mengedit_jadwal_orang_lain(): void
+    {
+        $guru = User::factory()->guru()->create();
+        $jadwal = Schedule::factory()->create();
+
+        $this->assertFalse(app(SchedulePolicy::class)->update($guru, $jadwal));
+    }
 }

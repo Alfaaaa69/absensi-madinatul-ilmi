@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\HasilHapus;
 use App\Enums\UserRole;
 use App\Exceptions\LastActiveAdminException;
 use App\Models\User;
@@ -11,6 +12,8 @@ use Illuminate\Validation\ValidationException;
 
 class UserService
 {
+    public function __construct(private readonly MasterDeletion $deletion) {}
+
     /**
      * @param  array{name: string, nuptk: string, email: ?string, password: string, role: string}  $data
      */
@@ -24,6 +27,8 @@ class UserService
                 'nuptk' => $data['nuptk'],
                 'email' => $this->normaliseEmail($data['email']),
                 'password' => Hash::make($data['password']),
+                // Password buatan admin adalah password sementara.
+                'must_change_password' => true,
                 'role' => UserRole::from($data['role']),
                 'is_active' => true,
             ]);
@@ -57,7 +62,13 @@ class UserService
     public function resetPassword(User $user, string $plainPassword): void
     {
         $user->password = Hash::make($plainPassword);
+        $user->must_change_password = true;
         $user->save();
+    }
+
+    public function pulihkan(User $user): void
+    {
+        $user->restore();
     }
 
     public function toggleActive(User $actor, User $target): void
@@ -75,10 +86,12 @@ class UserService
     }
 
     /**
-     * Soft delete. Absensi yang sudah tercatat tetap utuh karena attendances
-     * tidak punya FK cascade ke users.
+     * Guru/admin tanpa riwayat absensi dihapus permanen beserta jadwal
+     * mengajarnya. Kalau ada riwayat — sebagai pencatat maupun lewat jadwal
+     * yang dia ajar — akunnya diarsipkan supaya absensinya tidak kehilangan
+     * jejak orang yang mencatatnya.
      */
-    public function delete(User $actor, User $target): void
+    public function delete(User $actor, User $target): HasilHapus
     {
         if ($actor->is($target)) {
             throw new LastActiveAdminException;
@@ -88,7 +101,7 @@ class UserService
             throw new LastActiveAdminException;
         }
 
-        $target->delete();
+        return $this->deletion->hapus($target);
     }
 
     /**

@@ -47,6 +47,19 @@ class AcademicYearManagementTest extends TestCase
         $this->assertFalse($tahun->is_active);
     }
 
+    public function test_form_baru_default_ke_tanggal_hari_ini(): void
+    {
+        $admin = User::factory()->admin()->create();
+
+        Livewire::actingAs($admin)
+            ->test(AcademicYearManagement::class)
+            ->assertSet('start_date', now()->toDateString())
+            ->assertSet('end_date', now()->toDateString())
+            ->call('newForm')
+            ->assertSet('start_date', now()->toDateString())
+            ->assertSet('end_date', now()->toDateString());
+    }
+
     public function test_validasi_wajib_benar(): void
     {
         $admin = User::factory()->admin()->create();

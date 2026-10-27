@@ -3,14 +3,19 @@
 namespace App\Livewire;
 
 use App\Enums\DayOfWeek;
+use App\Enums\HasilHapus;
 use App\Enums\UserRole;
+use App\Livewire\Concerns\ConfirmableDeletion;
 use App\Models\AcademicYear;
+use App\Models\Attendance;
 use App\Models\Schedule;
 use App\Models\SchoolClass;
 use App\Models\Subject;
 use App\Models\User;
 use App\Services\ScheduleManager;
+use App\Support\SchoolBreaks;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
@@ -20,6 +25,10 @@ use Livewire\Component;
 #[Layout('layouts.app')]
 class ScheduleManagement extends Component
 {
+    use ConfirmableDeletion;
+
+    public const DELETE_MODAL = 'hapus-jadwal';
+
     public ?string $editingId = null;
 
     public string $academic_year_id = '';
@@ -36,7 +45,13 @@ class ScheduleManagement extends Component
 
     public string $end_time = '';
 
+    public string $searchJadwal = '';
+
     public bool $showArchived = false;
+
+    public string $selectedClassId = '';
+
+    public bool $showForm = false;
 
     /**
      * @return array<string, mixed>
@@ -72,9 +87,56 @@ class ScheduleManagement extends Component
                 ->where('is_active', true)
                 ->value('id') ?? AcademicYear::query()->orderByDesc('start_date')->value('id'));
         }
+
+        $this->selectedClassId = $this->firstClassId();
+    }
+
+    public function updatedAcademicYearId(): void
+    {
+        $this->selectedClassId = $this->firstClassId();
+        $this->class_id = '';
+        $this->resetValidation();
+    }
+
+    private function firstClassId(): string
+    {
+        return (string) SchoolClass::withTrashed()
+            ->where('academic_year_id', $this->academic_year_id)
+            ->orderBy('deleted_at')
+            ->orderBy('grade_level')
+            ->orderBy('name')
+            ->value('id');
+    }
+
+    public function updatedStartTime(): void
+    {
+        if (! preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $this->start_time)) {
+            return;
+        }
+
+        [$jam, $menit] = array_map('intval', explode(':', $this->start_time));
+        $total = $jam * 60 + $menit + 45;
+
+        if ($total >= 24 * 60) {
+            return;
+        }
+
+        $this->end_time = sprintf('%02d:%02d', intdiv($total, 60), $total % 60);
     }
 
     public function newForm(): void
+    {
+        $this->resetForm();
+        $this->showForm = true;
+    }
+
+    public function closeForm(): void
+    {
+        $this->resetForm();
+        $this->showForm = false;
+    }
+
+    private function resetForm(): void
     {
         $this->editingId = null;
         $this->class_id = '';
@@ -92,6 +154,8 @@ class ScheduleManagement extends Component
 
         Gate::authorize('update', $jadwal);
 
+        $this->showForm = true;
+        $this->selectedClassId = $jadwal->class_id;
         $this->editingId = $jadwal->id;
         $this->academic_year_id = $jadwal->schoolClass->academic_year_id;
         $this->class_id = $jadwal->class_id;
@@ -105,6 +169,7 @@ class ScheduleManagement extends Component
 
     public function save(): void
     {
+        $this->showForm = true;
         $this->validate();
 
         $jadwal = $this->editingId === null ? null : Schedule::withTrashed()->findOrFail($this->editingId);
@@ -122,20 +187,57 @@ class ScheduleManagement extends Component
             'end_time' => $this->end_time,
         ]);
 
-        $this->newForm();
+        $this->closeForm();
 
         session()->flash('sukses', $baru ? 'Jadwal ditambahkan.' : 'Jadwal diperbarui.');
     }
 
-    public function arsipkan(string $id): void
+    public function confirmDelete(): void
     {
-        $jadwal = Schedule::findOrFail($id);
+        if ($this->pendingDeleteId === null) {
+            return;
+        }
+
+        $jadwal = Schedule::findOrFail($this->pendingDeleteId);
 
         Gate::authorize('delete', $jadwal);
 
-        app(ScheduleManager::class)->arsipkan($jadwal);
+        $hasil = app(ScheduleManager::class)->hapus($jadwal);
 
-        session()->flash('sukses', 'Jadwal diarsipkan. Absensi lama pada jadwal ini tetap utuh.');
+        session()->flash('sukses', $hasil === HasilHapus::Permanen
+            ? 'Jadwal dihapus permanen.'
+            : 'Jadwal diarsipkan. Absensi lama pada jadwal ini tetap utuh.');
+
+        $this->cancelDelete();
+    }
+
+    protected function deletableRecord(string $id): Schedule
+    {
+        return Schedule::findOrFail($id);
+    }
+
+    /**
+     * @param  Schedule  $record
+     */
+    protected function deletableDescription(Model $record): string
+    {
+        return $record->schoolClass->name.' - '.$record->subject->name;
+    }
+
+    /**
+     * @param  Schedule  $record
+     */
+    protected function permanentDeleteMessage(Model $record): string
+    {
+        return 'Jadwal dihapus permanen dan slotnya dibebaskan.';
+    }
+
+    /**
+     * @param  Schedule  $record
+     */
+    protected function archiveDeleteMessage(Model $record): string
+    {
+        return 'Jadwal diarsipkan, bukan dihapus permanen. Absensi lama pada jadwal ini tetap utuh.';
     }
 
     public function pulihkan(string $id): void
@@ -158,32 +260,113 @@ class ScheduleManagement extends Component
     {
         Gate::authorize('viewAny', Schedule::class);
 
-        $kelasTerpilih = SchoolClass::query()
+        // Kelas yang sudah diarsipkan tetap bisa dipilih supaya jadwal lamanya
+        // tidak hilang dari halaman ini.
+        $kelasTerpilih = SchoolClass::withTrashed()
             ->where('academic_year_id', $this->academic_year_id)
+            ->with('homeroomTeacher')
+            ->orderBy('deleted_at')
             ->orderBy('grade_level')
             ->orderBy('name')
             ->get();
 
+        $daftarMapel = Subject::query()
+            ->orderBy('name')
+            ->get();
+
+        $daftarGuru = User::query()
+            ->where('role', UserRole::Guru)
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
+
+        $semua = Schedule::query()
+            ->addSelect(['memiliki_riwayat' => Attendance::query()
+                ->selectRaw('1')
+                ->whereColumn('attendances.schedule_id', 'schedules.id')
+                ->limit(1)])
+            ->when($this->showArchived, fn ($query) => $query->onlyTrashed())
+            // Relasi schedule sudah withTrashed(), tapi whereHas memakai
+            // query sendiri jadi harus disebut eksplisit. Tanpa ini jadwal
+            // dengan kelas ter-arsipkan hilang dari daftar.
+            ->whereHas('schoolClass', fn ($query) => $query
+                ->withTrashed()
+                ->where('academic_year_id', $this->academic_year_id))
+            ->with(['schoolClass', 'subject', 'teacher'])
+            ->orderBy('day_of_week')
+            ->orderBy('start_time')
+            ->get();
+
+        // Pencarian hanya menyaring daftar, bukan grid: grid selalu memakai
+        // seluruh jadwal kelas terpilih supaya tidak kosong saat mencari.
+        $daftar = $this->searchJadwal === ''
+            ? $semua
+            : $semua->filter(function (Schedule $jadwal) {
+                $kata = mb_strtolower($this->searchJadwal);
+
+                return str_contains(mb_strtolower($jadwal->schoolClass->name), $kata)
+                    || str_contains(mb_strtolower($jadwal->subject->name), $kata)
+                    || str_contains(mb_strtolower($jadwal->teacher->name), $kata);
+            })->values();
+
+        $kelasAktif = $kelasTerpilih->firstWhere('id', $this->selectedClassId)
+            ?? $kelasTerpilih->first();
+
+        // Jam pelajaran tiap hari bisa berbeda, jadi baris grid memakai urutan
+        // jam ke-1, ke-2, dst. Jam tepatnya ditampilkan di dalam kartu.
+        $perHari = $semua
+            ->where('class_id', $kelasAktif?->id)
+            ->groupBy(fn (Schedule $jadwal) => $jadwal->day_of_week->value);
+
+        $perHari = collect(DayOfWeek::cases())->mapWithKeys(function (DayOfWeek $hari) use ($perHari) {
+            $baris = ($perHari->get($hari->value) ?? collect())
+                ->sortBy('start_time')
+                ->values();
+
+            return [$hari->value => $baris->groupBy(function (Schedule $jadwal, int $index) use ($hari) {
+                return SchoolBreaks::periodFor($hari, $jadwal->start_time->format('H:i')) ?? $index + 1;
+            })];
+        });
+
+        $jedaPerPosisi = collect(DayOfWeek::cases())
+            ->flatMap(fn (DayOfWeek $hari) => collect(SchoolBreaks::forDay($hari))
+                ->map(fn (array $jeda) => [...$jeda, 'day' => $hari]))
+            ->groupBy('after');
+
+        $jumlahBaris = max(
+            $perHari->max(fn ($baris) => $baris->keys()->max() ?? 0) ?? 0,
+            $jedaPerPosisi->keys()->max() ?? 0,
+        );
+
+        $slotJeda = fn (int $nomor) => ['type' => 'break', 'jeda' => $jedaPerPosisi->get($nomor, collect())];
+
+        $grid = ($jumlahBaris > 0
+            ? collect(range(1, $jumlahBaris))
+                ->flatMap(function (int $nomor) use ($perHari, $jedaPerPosisi, $slotJeda) {
+                    $baris = [[
+                        'type' => 'lesson',
+                        'nomor' => $nomor,
+                        'hari' => $perHari->map(fn ($baris) => $baris->get($nomor, collect())),
+                    ]];
+
+                    if ($jedaPerPosisi->has($nomor)) {
+                        $baris[] = $slotJeda($nomor);
+                    }
+
+                    return $baris;
+                })
+            : collect())
+            ->when($jedaPerPosisi->has(0), fn ($grid) => $grid->prepend($slotJeda(0)));
+
         return view('livewire.schedule-management', [
             'tahunAjaran' => AcademicYear::query()->orderByDesc('start_date')->get(),
             'daftarKelas' => $kelasTerpilih,
-            'daftarMapel' => Subject::query()->orderBy('name')->get(),
-            'daftarGuru' => User::query()
-                ->where('role', UserRole::Guru)
-                ->where('is_active', true)
-                ->orderBy('name')
-                ->get(),
+            'daftarMapel' => $daftarMapel,
+            'daftarGuru' => $daftarGuru,
             'hari' => DayOfWeek::cases(),
-            'daftar' => Schedule::query()
-                ->when($this->showArchived, fn ($query) => $query->onlyTrashed())
-                ->whereHas('schoolClass', fn ($query) => $query
-                    ->where('academic_year_id', $this->academic_year_id))
-                ->with('schoolClass')
-                ->with('subject')
-                ->with('teacher')
-                ->orderBy('day_of_week')
-                ->orderBy('start_time')
-                ->get(),
+            'daftar' => $daftar,
+            'kelasAktif' => $kelasAktif,
+            'grid' => $grid,
         ])->title('Jadwal Pelajaran');
     }
 }

@@ -1,10 +1,11 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="dark">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
     <head>
         @include('partials.head')
     </head>
     <body class="min-h-screen bg-white dark:bg-zinc-800">
-        <flux:sidebar sticky collapsible="mobile" class="border-e border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900">
+        <!-- /60 sebelumnya membuat panel tembus pandang di HP; dibuat solid + bayangan -->
+        <flux:sidebar sticky collapsible="mobile" class="border-e border-madrasah-200 bg-madrasah-50 shadow-xl lg:shadow-none dark:border-zinc-700 dark:bg-zinc-900">
             <flux:sidebar.header>
                 <x-app-logo :sidebar="true" href="{{ route('dashboard') }}" wire:navigate />
                 <flux:sidebar.collapse class="lg:hidden" />
@@ -14,6 +15,10 @@
                 <flux:sidebar.group :heading="__('Sistem Absensi')" class="grid">
                     <x-nav.dashboard-link />
 
+                    <x-nav.recap-link />
+
+                    <x-nav.jadwal-link />
+
                     <x-nav.user-link />
 
                     <x-nav.data-master />
@@ -21,6 +26,8 @@
             </flux:sidebar.nav>
 
             <flux:spacer />
+
+            <x-theme-toggle class="hidden lg:flex" />
 
             <x-desktop-user-menu class="hidden lg:block" />
         </flux:sidebar>
@@ -30,6 +37,8 @@
             <flux:sidebar.toggle class="lg:hidden" icon="bars-2" inset="left" />
 
             <flux:spacer />
+
+            <x-theme-toggle class="lg:hidden" />
 
             <flux:dropdown position="top" align="end">
                 <flux:profile

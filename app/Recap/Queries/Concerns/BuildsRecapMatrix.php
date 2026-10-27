@@ -116,7 +116,9 @@ trait BuildsRecapMatrix
      */
     private function aggregate(Collection $scheduleIds, RecapPeriod $period): array
     {
-        if ($scheduleIds->isEmpty()) {
+        $akhir = $period->countedEnd();
+
+        if ($scheduleIds->isEmpty() || $akhir === null) {
             return [];
         }
 
@@ -125,7 +127,7 @@ trait BuildsRecapMatrix
             ->whereIn('schedule_id', $scheduleIds)
             ->whereBetween('date', [
                 $period->start->toDateString(),
-                $period->end->toDateString(),
+                $akhir->toDateString(),
             ])
             ->groupBy('student_id', 'schedule_id', 'status')
             ->get();

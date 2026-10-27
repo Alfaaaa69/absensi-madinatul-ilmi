@@ -8,4 +8,14 @@ enum AttendanceStatus: string
     case Izin = 'izin';
     case Sakit = 'sakit';
     case Alpa = 'alpa';
+
+    public function label(): string
+    {
+        return match ($this) {
+            self::Hadir => 'Hadir',
+            self::Izin => 'Izin',
+            self::Sakit => 'Sakit',
+            self::Alpa => 'Alfa',
+        };
+    }
 }

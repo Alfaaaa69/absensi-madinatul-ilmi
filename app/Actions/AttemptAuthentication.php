@@ -27,25 +27,30 @@ class AttemptAuthentication
      */
     public function attempt(array $credentials): void
     {
-        $key = self::throttleKeyFor((string) $credentials['nuptk'], request()->ip());
+        $identifier = (string) ($credentials['email'] ?? $credentials['nuptk'] ?? '');
+        $field = isset($credentials['email']) ? 'email' : 'nuptk';
+
+        $key = self::throttleKeyFor($identifier, request()->ip());
 
         if (RateLimiter::tooManyAttempts($key, self::MAX_ATTEMPTS)) {
             $seconds = RateLimiter::availableIn($key);
 
             throw ValidationException::withMessages([
-                'nuptk' => [__('auth.throttle', ['seconds' => $seconds])],
+                $field => [__('auth.throttle', ['seconds' => $seconds])],
             ]);
         }
 
-        $authenticated = Auth::attempt([
-            'nuptk' => $credentials['nuptk'],
+        $authCredentials = [
+            $field => $identifier,
             'password' => $credentials['password'],
-        ], (bool) ($credentials['remember'] ?? false));
+        ];
+
+        $authenticated = Auth::attempt($authCredentials, (bool) ($credentials['remember'] ?? false));
 
         if (! $authenticated) {
             RateLimiter::hit($key, self::DECAY_SECONDS);
 
-            $this->fail(__('auth.failed'));
+            $this->fail(__('auth.failed'), $field);
         }
 
         $user = Auth::user();
@@ -53,34 +58,34 @@ class AttemptAuthentication
         if (! $user instanceof User) {
             Auth::logout();
 
-            $this->fail(__('auth.failed'));
+            $this->fail(__('auth.failed'), $field);
         }
 
         if (! $user->is_active) {
             Auth::logout();
 
-            $this->fail('Akun ini sudah dinonaktifkan. Hubungi admin.');
+            $this->fail('Akun ini sudah dinonaktifkan. Hubungi admin.', $field);
         }
 
         RateLimiter::clear($key);
     }
 
     /**
-     * Bangun kunci throttle dari nuptk dan IP.
+     * Bangun kunci throttle dari email/nuptk dan IP.
      *
      * Dipakai dua kali: oleh attempt() di bawah, dan oleh named limiter
      * 'login' di AppServiceProvider. Satu implementasi supaya kedua jalur
      * tidak pernah menghitung kunci yang berbeda.
      */
-    public static function throttleKeyFor(string $nuptk, ?string $ip): string
+    public static function throttleKeyFor(string $identifier, ?string $ip): string
     {
-        return 'login|'.Str::lower($nuptk).'|'.(string) $ip;
+        return 'login|'.Str::lower($identifier).'|'.(string) $ip;
     }
 
-    private function fail(string $message): never
+    private function fail(string $message, string $field = 'email'): never
     {
         throw ValidationException::withMessages([
-            'nuptk' => [$message],
+            $field => [$message],
         ]);
     }
 }

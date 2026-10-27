@@ -82,4 +82,81 @@ class RecapPeriodTest extends TestCase
     {
         $this->assertSame('1 September 2025', RecapPeriod::daily(Carbon::parse('2025-09-01'))->label());
     }
+
+    public function test_batas_hitung_diperpendek_sampai_hari_ini(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2025-09-15'));
+
+        $this->assertSame(
+            '2025-09-15',
+            RecapPeriod::monthly(2025, 9)->countedEnd()?->toDateString(),
+        );
+    }
+
+    public function test_periode_lampau_tidak_diubah_batas_hitungnya(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2025-09-15'));
+
+        $this->assertSame(
+            '2025-08-31',
+            RecapPeriod::monthly(2025, 8)->countedEnd()?->toDateString(),
+        );
+    }
+
+    public function test_periode_seluruhnya_di_masa_depan_tidak_punya_batas_hitung(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2025-09-15'));
+
+        $this->assertNull(RecapPeriod::monthly(2025, 10)->countedEnd());
+    }
+
+    public function test_periode_harian_di_masa_depan_tidak_punya_batas_hitung(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2025-09-15'));
+
+        $this->assertNull(RecapPeriod::daily(Carbon::parse('2025-09-16'))->countedEnd());
+    }
+
+    /**
+     * Tanpa catatan ini, laporan September yang diunduh tanggal 15 tetap menulis
+     * "Periode: September 2025", dan angka yang sama dihitung ulang di akhir
+     * bulan tidak akan cocok - padahal keduanya sama-sama sahih.
+     */
+    public function test_catatan_batas_disebutkan_saat_periode_bulan_berjalan(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2025-09-15'));
+
+        $this->assertSame(
+            'Data per 15 September 2025',
+            RecapPeriod::monthly(2025, 9)->countedThroughNote(),
+        );
+    }
+
+    public function test_tidak_ada_catatan_batas_untuk_periode_yang_sudah_selesai(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2025-09-15'));
+
+        $this->assertNull(RecapPeriod::monthly(2025, 8)->countedThroughNote());
+    }
+
+    public function test_tidak_ada_catatan_batas_untuk_periode_yang_belum_mulai(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2025-09-15'));
+
+        // Tidak ada tanggal yang terhitung sama sekali; laporan kosong sudah
+        // menjelaskan itu sendiri.
+        $this->assertNull(RecapPeriod::monthly(2025, 10)->countedThroughNote());
+    }
+
+    public function test_catatan_batas_menyebut_hari_yang_sama_dengan_batas_hitung(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2025-09-15'));
+
+        $periode = RecapPeriod::monthly(2025, 9);
+
+        $this->assertStringContainsString(
+            $periode->countedEnd()?->translatedFormat('j F Y') ?? '',
+            $periode->countedThroughNote() ?? '',
+        );
+    }
 }

@@ -2,10 +2,13 @@
 
 namespace App\Services;
 
+use App\Enums\HasilHapus;
 use App\Models\Subject;
 
 final class SubjectManager
 {
+    public function __construct(private readonly MasterDeletion $deletion) {}
+
     /**
      * @param  array{code: string, name: string}  $data
      */
@@ -22,9 +25,9 @@ final class SubjectManager
         return $mapel;
     }
 
-    public function arsipkan(Subject $subject): void
+    public function hapus(Subject $subject): HasilHapus
     {
-        $subject->delete();
+        return $this->deletion->hapus($subject);
     }
 
     public function pulihkan(Subject $subject): void

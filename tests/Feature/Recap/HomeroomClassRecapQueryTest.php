@@ -14,6 +14,7 @@ use App\Recap\Queries\HomeroomClassRecapQuery;
 use App\Recap\RecapPeriod;
 use App\Recap\RecapPeriodOutOfRange;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
 class HomeroomClassRecapQueryTest extends TestCase
@@ -73,7 +74,7 @@ class HomeroomClassRecapQueryTest extends TestCase
         $this->assertSame($tahunIni->id, $hasil->classes->first()->academic_year_id);
     }
 
-    public function test_menjumlahkan_absensi_per_siswa_per_mapel(): void
+    public function test_menjumlahkan_absensi_per_siswa(): void
     {
         $wali = User::factory()->guru()->create();
         $tahun = $this->tahun();
@@ -109,16 +110,16 @@ class HomeroomClassRecapQueryTest extends TestCase
             ->run(RecapPeriod::monthly(2025, 9));
 
         $this->assertCount(1, $hasil->rows);
+        $this->assertEmpty($hasil->subjects);
 
         $baris = $hasil->rows->first();
-        $sel = $baris['cells'][$mapel->id];
 
-        $this->assertSame(2, $sel['hadir']);
-        $this->assertSame(0, $sel['izin']);
-        $this->assertSame(1, $sel['sakit']);
-        $this->assertSame(1, $sel['alpa']);
-        $this->assertSame(4, $sel['total']);
         $this->assertSame(2, $baris['total']['hadir']);
+        $this->assertSame(0, $baris['total']['izin']);
+        $this->assertSame(1, $baris['total']['sakit']);
+        $this->assertSame(1, $baris['total']['alpa']);
+        $this->assertSame(4, $baris['total']['total']);
+        $this->assertSame(2, $hasil->summary['hadir']);
         $this->assertSame(4, array_sum($hasil->summary));
     }
 
@@ -151,6 +152,57 @@ class HomeroomClassRecapQueryTest extends TestCase
         $this->assertSame(0, $hasil->summary['hadir']);
     }
 
+    public function test_absensi_di_masa_depan_tidak_dihitung(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2025-09-15'));
+
+        $wali = User::factory()->guru()->create();
+        $tahun = $this->tahun();
+        $kelas = SchoolClass::factory()->create([
+            'academic_year_id' => $tahun->id,
+            'homeroom_teacher_id' => $wali->id,
+        ]);
+        $jadwal = Schedule::factory()->create([
+            'class_id' => $kelas->id,
+            'teacher_id' => $wali->id,
+        ]);
+        $siswa = Student::factory()->create(['class_id' => $kelas->id]);
+
+        // Admin boleh mengisi tanggal yang belum terjadi. Hitungan rekap harus
+        // tetap sama dengan kenyataan saat laporan dicetak.
+        Attendance::create([
+            'student_id' => $siswa->id,
+            'schedule_id' => $jadwal->id,
+            'date' => '2025-09-10',
+            'status' => AttendanceStatus::Hadir,
+            'recorded_by' => $wali->id,
+        ]);
+        Attendance::create([
+            'student_id' => $siswa->id,
+            'schedule_id' => $jadwal->id,
+            'date' => '2025-09-20',
+            'status' => AttendanceStatus::Alpa,
+            'recorded_by' => $wali->id,
+        ]);
+
+        $periode = RecapPeriod::monthly(2025, 9);
+
+        $hasil = app(HomeroomClassRecapQuery::class)
+            ->for($wali, $tahun)
+            ->run($periode);
+
+        $this->assertSame(1, $hasil->summary['hadir']);
+        $this->assertSame(0, $hasil->summary['alpa']);
+
+        // Drill-down harus menerapkan aturan yang sama, kalau tidak angka di
+        // daftar riwayat dan angka di matriks akan berbeda.
+        $riwayat = app(HomeroomClassRecapQuery::class)
+            ->studentHistory($wali, $tahun, $siswa, $periode);
+
+        $this->assertCount(1, $riwayat);
+        $this->assertStringStartsWith('2025-09-10', (string) $riwayat->first()['date']);
+    }
+
     public function test_periode_di_luar_tahun_ajaran_ditolak(): void
     {
         $wali = User::factory()->guru()->create();
@@ -161,38 +213,5 @@ class HomeroomClassRecapQueryTest extends TestCase
         app(HomeroomClassRecapQuery::class)
             ->for($wali, $tahun)
             ->run(RecapPeriod::monthly(2025, 7));
-    }
-
-    public function test_wali_kelas_lihat_mapel_yang_tidak_diajar_sendiri(): void
-    {
-        $wali = User::factory()->guru()->create();
-        $guruLain = User::factory()->guru()->create();
-        $tahun = $this->tahun();
-        $kelas = SchoolClass::factory()->create([
-            'academic_year_id' => $tahun->id,
-            'homeroom_teacher_id' => $wali->id,
-        ]);
-        $mapelFisika = Subject::factory()->create();
-        $jadwal = Schedule::factory()->create([
-            'class_id' => $kelas->id,
-            'subject_id' => $mapelFisika->id,
-            'teacher_id' => $guruLain->id,
-        ]);
-        $siswa = Student::factory()->create(['class_id' => $kelas->id]);
-
-        Attendance::create([
-            'student_id' => $siswa->id,
-            'schedule_id' => $jadwal->id,
-            'date' => '2025-09-01',
-            'status' => AttendanceStatus::Hadir,
-            'recorded_by' => $guruLain->id,
-        ]);
-
-        $hasil = app(HomeroomClassRecapQuery::class)
-            ->for($wali, $tahun)
-            ->run(RecapPeriod::monthly(2025, 9));
-
-        $this->assertTrue($hasil->subjects->contains('id', $mapelFisika->id));
-        $this->assertSame(1, $hasil->rows->first()['cells'][$mapelFisika->id]['hadir']);
     }
 }

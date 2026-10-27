@@ -11,8 +11,8 @@ use Livewire\Component;
 #[Layout('layouts.auth.card')]
 class Login extends Component
 {
-    #[Validate('required|string|digits:18|max:20')]
-    public string $nuptk = '';
+    #[Validate('required|string|email|max:255')]
+    public string $email = '';
 
     #[Validate('required|string|min:8')]
     public string $password = '';
@@ -26,7 +26,7 @@ class Login extends Component
 
         try {
             $action->attempt([
-                'nuptk' => $this->nuptk,
+                'email' => $this->email,
                 'password' => $this->password,
                 'remember' => $this->remember,
             ]);

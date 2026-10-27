@@ -49,11 +49,71 @@ class DemoSchoolSeeder extends Seeder
 
     private const SISWA_PER_KELAS = 30;
 
+    private const NAMA_DEPAN = [
+        'Ahmad', 'Muhammad', 'Mohamad', 'Agus', 'Budi', 'Citra', 'Dewi', 'Eko', 'Fitri',
+        'Gilang', 'Hana', 'Indra', 'Jihan', 'Kurnia', 'Lina', 'Mita', 'Nur', 'Oki', 'Putra',
+        'Rudi', 'Santi', 'Toni', 'Udin', 'Wahyu', 'Xavier', 'Yudi', 'Zaki', 'Ade', 'Bayu',
+        'Cakra', 'Darma', 'Edi', 'Felix', 'Ganesh', 'Hesti', 'Irfan', 'Juandra', 'Karim',
+        'Lala', 'Mila', 'Nando', 'Okto', 'Prima', 'Quin', 'Rahmat', 'Sari', 'Tamara', 'Umar',
+    ];
+
+    private const NAMA_BELAKANG = [
+        'Saputra', 'Sutrisno', 'Wijaya', 'Santoso', 'Pratama', 'Nugraha', 'Setiawan',
+        'Kusuma', 'Maulana', 'Hidayat', 'Permana', 'Gunawan', 'Wibowo', 'Saputro',
+        'Pamungkas', 'Susanto', 'Ferdiansyah', 'Sulistyo', 'Nuryanto', 'Kuswandari',
+        'Suryani', 'Lestari', 'Anggraini', 'Dewanti', 'Rahmawati', 'Sulistyorini',
+        'Puspasari', 'Mulyani', 'Setyawati', 'Wulandari', 'Mutiara', 'Ningsih', 'Wulani',
+        'Rahayu', 'Ananda', 'Sari', 'Putri', 'Dian', 'Lestari', 'Anggraeni',
+    ];
+
     private const SLOT = [
         ['07:00:00', '08:30:00'],
         ['08:30:00', '10:00:00'],
         ['10:00:00', '11:30:00'],
     ];
+
+    /**
+     * Pemetaan indeks guru per slot mingguan (0..14) dan indeks kelas (0..6).
+     * Setiap guru mengajar maksimal 3 kelas berbeda dan tidak ada jadwal bentrok
+     * pada slot jam yang sama.
+     */
+    private const CLASS_SLOTS = array (
+      array ( 1, 2, 6, 8, 9, 11, 13, 14 ),
+      array ( 1, 2, 3, 4, 5, 7, 8, 10 ),
+      array ( 1, 3, 6, 7, 8, 11, 12, 13 ),
+      array ( 0, 1, 2, 4, 8, 9, 12, 14 ),
+      array ( 0, 1, 2, 5, 9, 11, 13, 14 ),
+      array ( 1, 2, 3, 8, 9, 11, 13, 14 ),
+      array ( 0, 4, 6, 9, 11, 12, 13, 14 ),
+    );
+
+    private const CLASS_SUBJECTS = array (
+      array ( 5, 4, 3, 1, 6, 2, 0, 7 ),
+      array ( 7, 1, 2, 0, 4, 6, 3, 5 ),
+      array ( 2, 5, 0, 1, 6, 4, 7, 3 ),
+      array ( 3, 6, 7, 5, 0, 2, 4, 1 ),
+      array ( 7, 2, 6, 1, 0, 5, 4, 3 ),
+      array ( 1, 4, 0, 5, 2, 3, 6, 7 ),
+      array ( 4, 3, 0, 6, 1, 7, 2, 5 ),
+    );
+
+    private const SLOT_ASSIGNMENTS = array (
+      0 => array ( 3 => 8, 4 => 9, 6 => 6 ),
+      1 => array ( 0 => 0, 1 => 8, 2 => 1, 3 => 2, 4 => 7, 5 => 5 ),
+      2 => array ( 0 => 0, 1 => 8, 3 => 3, 4 => 4, 5 => 5 ),
+      3 => array ( 1 => 8, 2 => 1, 5 => 5 ),
+      4 => array ( 1 => 1, 3 => 3, 6 => 9 ),
+      5 => array ( 1 => 8, 4 => 4 ),
+      6 => array ( 0 => 0, 2 => 2, 6 => 9 ),
+      7 => array ( 1 => 8, 2 => 1 ),
+      8 => array ( 0 => 6, 1 => 8, 2 => 7, 3 => 3, 5 => 4 ),
+      9 => array ( 0 => 0, 3 => 3, 4 => 9, 5 => 8, 6 => 5 ),
+      10 => array ( 1 => 8 ),
+      11 => array ( 0 => 6, 2 => 2, 4 => 4, 5 => 5, 6 => 9 ),
+      12 => array ( 2 => 1, 3 => 2, 6 => 9 ),
+      13 => array ( 0 => 0, 2 => 9, 4 => 7, 5 => 8, 6 => 6 ),
+      14 => array ( 0 => 7, 3 => 3, 4 => 9, 5 => 5, 6 => 6 ),
+    );
 
     /** Jumlah baris absensi per sekali insert. */
     private const UKURAN_CHUNK = 300;
@@ -123,10 +183,8 @@ class DemoSchoolSeeder extends Seeder
     }
 
     /**
-     * Guru untuk (kelas, hari, slot) diambil dari `($indexKelas + $indexHari +
-     * $indexSlot) % 10`. Untuk satu hari dan satu slot, 7 nilai berurutan mod 10
-     * tidak pernah bertabrakan, jadi tidak ada guru yang Mengajar dua kelas
-     * pada jam yang sama.
+     * Jadwal disusun dari JADWAL_GURU_MAP sehingga tidak ada jadwal guru yang bentrok
+     * dan setiap guru mengajar maksimal 3 kelas pada tahun ajaran aktif.
      *
      * @param  Collection<int, SchoolClass>  $kelas
      * @param  Collection<int, Subject>  $mapel
@@ -134,20 +192,25 @@ class DemoSchoolSeeder extends Seeder
      */
     private function buatJadwal(Collection $kelas, Collection $mapel, Collection $guru): void
     {
-        $jumlahMapel = $mapel->count();
-
         foreach ($kelas->values() as $indexKelas => $k) {
-            foreach (DayOfWeek::cases() as $indexHari => $hari) {
-                foreach (self::SLOT as $indexSlot => $slot) {
-                    Schedule::create([
-                        'class_id' => $k->id,
-                        'subject_id' => $mapel[($indexKelas * 3 + $indexSlot) % $jumlahMapel]->id,
-                        'teacher_id' => $guru[($indexKelas + $indexHari + $indexSlot) % self::JUMLAH_GURU]->id,
-                        'day_of_week' => $hari,
-                        'start_time' => $slot[0],
-                        'end_time' => $slot[1],
-                    ]);
-                }
+            $slots = self::CLASS_SLOTS[$indexKelas];
+            foreach ($slots as $idx => $slotIndex) {
+                $dayIndex = intdiv($slotIndex, count(self::SLOT)); // 0..4
+                $slotInDay = $slotIndex % count(self::SLOT); // 0..2
+                $hari = DayOfWeek::cases()[$dayIndex];
+                $waktuSlot = self::SLOT[$slotInDay];
+
+                $subjectIndex = self::CLASS_SUBJECTS[$indexKelas][$idx];
+                $guruIndex = self::SLOT_ASSIGNMENTS[$slotIndex][$indexKelas];
+
+                Schedule::create([
+                    'class_id' => $k->id,
+                    'subject_id' => $mapel[$subjectIndex]->id,
+                    'teacher_id' => $guru[$guruIndex]->id,
+                    'day_of_week' => $hari,
+                    'start_time' => $waktuSlot[0],
+                    'end_time' => $waktuSlot[1],
+                ]);
             }
         }
     }
@@ -157,19 +220,20 @@ class DemoSchoolSeeder extends Seeder
      */
     private function buatSiswa(Collection $kelas): void
     {
-        $namaDepan = ['Ahmad', 'Budi', 'Citra', 'Dewi', 'Eko', 'Fitri', 'Gilang', 'Hana', 'Indra', 'Jihan'];
         $urut = 0;
 
         foreach ($kelas as $k) {
             for ($i = 1; $i <= self::SISWA_PER_KELAS; $i++) {
                 $urut++;
+                $namaDepan = self::NAMA_DEPAN[($urut - 1) % count(self::NAMA_DEPAN)];
+                $namaBelakang = self::NAMA_BELAKANG[($urut - 1) % count(self::NAMA_BELAKANG)];
 
                 Student::create([
                     'class_id' => $k->id,
                     // Nomor urut global, bukan crc32(): hash bisa bertabrakan
                     // antar kelas dan langsung melanggar unique constraint.
                     'nisn' => (string) (100000 + $urut),
-                    'name' => $namaDepan[($i - 1) % count($namaDepan)].' '.$k->name,
+                    'name' => $namaDepan.' '.$namaBelakang,
                     'gender' => $i % 2 === 0 ? StudentGender::P : StudentGender::L,
                 ]);
             }

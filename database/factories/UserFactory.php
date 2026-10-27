@@ -24,6 +24,7 @@ class UserFactory extends Factory
             'nuptk' => '10'.fake()->unique()->numerify('################'),
             'email' => fake()->unique()->safeEmail(),
             'password' => 'password',
+            'must_change_password' => false,
             'role' => UserRole::Guru,
             'is_active' => true,
             // Wajib ada walau null: Auth::logout() membaca remember_token.

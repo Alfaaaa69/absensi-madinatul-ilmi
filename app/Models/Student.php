@@ -39,11 +39,14 @@ class Student extends Model
     }
 
     /**
+     * Kelas yang diarsipkan tidak boleh membuat daftar siswa error: siswa dan
+     * riwayat absensinya masih ada, jadi nama kelasnya juga masih relevan.
+     *
      * @return BelongsTo<SchoolClass, $this>
      */
     public function schoolClass(): BelongsTo
     {
-        return $this->belongsTo(SchoolClass::class, 'class_id');
+        return $this->belongsTo(SchoolClass::class, 'class_id')->withTrashed();
     }
 
     /**
