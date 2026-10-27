@@ -2,10 +2,10 @@
 
 Sistem absensi harian untuk satu sekolah mitra PKM. Guru mencatat kehadiran siswa per jam pelajaran, wali kelas memantau kelasnya lintas mata pelajaran, admin mengelola data master dan laporan.
 
-- **Stack:** Laravel 13 + Livewire 4, MySQL, Tailwind CSS 4
+- **Stack:** Laravel 12 + Livewire 3, MySQL, Tailwind CSS 4, Flux UI
 - **Deploy:** shared hosting cPanel (`QUEUE_CONNECTION=sync`, tidak ada cron, tidak ada queue worker)
-- **Status:** Plan 1-3 selesai, Plan 4-5 belum dikerjakan
-- **Test:** PHPUnit 12, 235 test, seluruhnya hijau
+- **Status:** Plan 1-5 sudah dikerjakan; perluasan arsip & hari Sabtu tergantung keputusan sekolah
+- **Test:** PHPUnit 12, 518 test, seluruhnya hijau
 
 Dokumen sumber kebenaran ada di `docs/`. Kalau ada konflik antara kode dan dokumen, dokumen menang — baca `CLAUDE.md` dulu sebelum mengubah apa pun.
 
@@ -56,6 +56,8 @@ Lalu jalankan migrasi dan seeder:
 
 ```bash
 php artisan migrate --seed
+npm install
+npm run build
 php artisan serve
 ```
 
@@ -88,7 +90,7 @@ php artisan test                          # semua test
 php artisan test --filter=LoginTest       # satu test
 ```
 
-Test jalan di SQLite in-memory, jadi tidak butuh MySQL dan tidak menyentuh database pengembangan.
+Test jalan di SQLite in-memory, jadi tidak butuh MySQL dan tidak menyentuh database pengembangan. `public/build` tidak ikut git — hasil build Tailwind/Flux wajib dibuat dengan `npm run build` di mesin mana pun yang menjalankan aplikasi.
 
 Linting dan analisis statis:
 
@@ -114,19 +116,19 @@ Status build: <https://github.com/Alfaaaa69/absensi-madinatul-ilmi/actions>
 ```
 app/
   Actions/          AttemptAuthentication — login via NUPTK
+  Attendance/       Queries absensi (jadwal hari ini, kontak admin)
   Enums/            5 enum domain (role, status absensi, hari, dst)
-  Exceptions/
   Exports/          RecapSheet — export Excel
-  Imports/         Pembaca & validator Excel siswa
-  Livewire/         Satu komponen per fitur utama
-  Models/           7 model Eloquent
-  Policies/         Otorisasi, 7 policy
+  Imports/          Pembaca & validator Excel siswa
+  Livewire/         Satu komponen per fitur utama + Concerns/
+  Models/           8 model Eloquent
+  Policies/         Otorisasi, 8 policy
   Recap/            Query Object rekap + exporter
   Services/         Semua penulisan database
-  Support/          NavLink, ScheduleConflictDetector
+  Support/          NavLink, ScheduleConflictDetector, SchoolBreaks
 database/
-  migrations/       7 tabel
-  seeders/          DemoSchoolSeeder
+  migrations/       15 migration (termasuk tabel jeda istirahat)
+  seeders/          DemoSchoolSeeder, seeder jadwal Senin
   factories/
 docs/
   PRD-Sistem-Absensi-Sekolah.MD
@@ -134,7 +136,7 @@ docs/
   specs/            Spec desain + 5 plan implementasi
 resources/views/    Blade untuk setiap komponen Livewire
 tests/
-  Feature/          29 file test
+  Feature/          30 file test feature
   Unit/
 ```
 
@@ -158,7 +160,7 @@ Bagian ini bukan saran. Melanggar aturan ini merusak fitur secara diam-diam.
 **Data master**
 - Tabel master (`users`, `students`, `classes`, `subjects`, `schedules`) memakai soft delete. Hapus data master tidak boleh menghapus riwayat absensi.
 - `classes` wajib punya `academic_year_id`. Kelas dibuat ulang tiap tahun ajaran.
-- `schedules.day_of_week` adalah tinyint 1-5 (1=Senin, 5=Jumat), bukan nama hari.
+- `schedules.day_of_week` adalah tinyint 1-5 (1=Senin, 5=Jumat), bukan nama hari. Minggu tidak masuk enum sebagai penanda hari tidak bekerja; jeda istirahat bawaan hanya Senin-Jumat.
 - `attendances.recorded_by` boleh berbeda dari `schedules.teacher_id` (guru pengganti). Jangan menganggap selalu sama.
 
 **Waktu**
@@ -181,17 +183,19 @@ Feature di luar scope v1 **tidak** dikerjakan: login orang tua, notifikasi Whats
 
 ## Rencana yang belum dikerjakan
 
-Semua ada di `docs/specs/plans/`. Jalankan plan itu dengan skill `superpowers:executing-plans` atau `superpowers:subagent-driven-development`, jangan mulai mengoding dari spec langsung.
+README memakai tabel status — lihat `docs/specs/plans/` untuk isi masing-masing plan yang dikerjakan dengan skill `superpowers:executing-plans`, jangan mulai mengoding dari spec langsung.
 
 | Plan | Isi | Status |
 |---|---|---|
 | 1 | Fondasi: 7 tabel, model, policy, query rekap, seeder | selesai |
 | 2 | Akun: login NUPTK, user management, dashboard, sidebar | selesai |
 | 3 | Data master: tahun ajaran, mapel, kelas, jadwal, siswa, import Excel | selesai |
-| 4 | Absensi: `TodaySchedule`, `AttendanceEntry`, batas edit 1 hari | belum |
-| 5 | Rekap & deploy: halaman rekap per peran, export, SOP shared hosting | belum |
+| 4 | Absensi: `TodaySchedule`, `AttendanceEntry`, batas edit 1 hari | selesai |
+| 5 | Rekap & deploy: halaman rekap per peran, export, SOP shared hosting | selesai |
 
-Plan 1-3 di atas adalah kode yang sudah ada dan tercover 235 test. Plan 4 dan 5 belum ada implementasinya — `app/Recap/Queries/` sudah ada dari Plan 1, tapi belum ada komponen Livewire yang memakainya.
+Seluruh plan tertutup 518 test feature/unit.
+
+**Diskusi menggantung:** di luar plan ini ada dua topik yang sudah dibahas tapi ditunda — menghapus fitur arsip data master (soft delete) dan menambah hari Sabtu untuk jadwal. Keputusannya menunggu konfirmasi sekolah: arsenal hapus-permanen berisiko terhadap riwayat absensi, dan Sabtu hanya 2 baris perubahan enum.
 
 ---
 
