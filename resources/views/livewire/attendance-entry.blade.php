@@ -123,54 +123,47 @@
                     </button>
                 </div>
 
-                <div class="overflow-x-auto rounded-xl border border-zinc-200 bg-white dark:bg-zinc-900 dark:border-zinc-800">
-                    <table class="min-w-full divide-y divide-zinc-200">
-                        <thead class="bg-zinc-50 dark:bg-zinc-800/50">
-                            <tr>
-                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Siswa</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Status</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Alasan</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-zinc-200">
-                            @foreach ($baris as $id => $siswa)
-                                @php $st = $status[$id] ?? null; @endphp
-                                <tr wire:key="baris-{{ $id }}" @class(['bg-zinc-50/60 dark:bg-zinc-800/40' => $st !== 'hadir'])>
-                                    <td class="px-4 py-3">
-                                        <p class="text-sm font-medium text-zinc-900 dark:text-zinc-100">{{ $siswa['nama'] }}</p>
-                                        <p class="text-xs text-zinc-500 dark:text-zinc-400">NISN {{ $siswa['nisn'] }} - {{ $siswa['jk'] }}</p>
-                                    </td>
-                                    <td class="px-4 py-3">
-                                        {{-- Tombol status alih-alih dropdown: pilih satu klik, warna langsung terlihat --}}
-                                        <div class="inline-flex overflow-hidden rounded-lg border border-zinc-300 dark:border-zinc-700">
-                                            @foreach (\App\Enums\AttendanceStatus::cases() as $opsi)
-                                                @php $aktif = $opsi->value === $st; @endphp
-                                                <button type="button"
-                                                        wire:click="$set('status.{{ $id }}', '{{ $opsi->value }}')"
-                                                        class="px-2.5 py-1 text-xs font-semibold transition-colors {{ $statusWarna[$aktif ? $opsi->value : 'netral'][$aktif ? 'aktif' : 'netral'] }}"
-                                                        @if ($aktif) aria-pressed="true" @endif>
-                                                    {{ $opsi->label() }}
-                                                </button>
-                                            @endforeach
-                                        </div>
-                                        @error("status.{{ $id }}")
-                                            <p class="mt-1 text-xs text-red-700 dark:text-red-300">{{ $message }}</p>
-                                        @enderror
-                                    </td>
-                                    <td class="px-4 py-3">
-                                        @if ($this->alasanTerlihat($id))
-                                            <input type="text" wire:model="note.{{ $id }}" placeholder="Contoh: Demam, acara keluarga, dll" class="w-full rounded-lg border border-zinc-300 text-sm dark:border-zinc-700" />
-                                            @error("note.{{ $id }}")
-                                                <p class="mt-1 text-xs text-red-700 dark:text-red-300">{{ $message }}</p>
-                                            @enderror
-                                        @else
-                                            <span class="text-xs text-zinc-400 dark:text-zinc-500">-</span>
-                                        @endif
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
+                {{-- Satu baris per siswa, bertumpuk vertikal: bentuknya sama di HP
+                     maupun laptop, jadi tidak ada kolom yang terpotong. --}}
+                <div class="space-y-3">
+                    @foreach ($baris as $id => $siswa)
+                        @php $st = $status[$id] ?? null; @endphp
+                        <div wire:key="baris-{{ $id }}"
+                             @class([
+                                 'rounded-xl border p-4',
+                                 'border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900' => $st === 'hadir',
+                                 'border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-800/40' => $st !== 'hadir',
+                             ])>
+                            <p class="text-sm font-medium text-zinc-900 dark:text-zinc-100">{{ $siswa['nama'] }}</p>
+                            <p class="text-xs text-zinc-500 dark:text-zinc-400">NISN {{ $siswa['nisn'] }} - {{ $siswa['jk'] }}</p>
+
+                            {{-- Tombol status alih-alih dropdown: pilih satu klik, warna langsung terlihat --}}
+                            <div class="mt-3 inline-flex overflow-hidden rounded-lg border border-zinc-300 dark:border-zinc-700">
+                                @foreach (\App\Enums\AttendanceStatus::cases() as $opsi)
+                                    @php $aktif = $opsi->value === $st; @endphp
+                                    <button type="button"
+                                            wire:click="$set('status.{{ $id }}', '{{ $opsi->value }}')"
+                                            class="px-3 py-1.5 text-sm font-semibold transition-colors {{ $statusWarna[$aktif ? $opsi->value : 'netral'][$aktif ? 'aktif' : 'netral'] }}"
+                                            @if ($aktif) aria-pressed="true" @endif>
+                                        {{ $opsi->label() }}
+                                    </button>
+                                @endforeach
+                            </div>
+                            @error("status.{{ $id }}")
+                                <p class="mt-1 text-xs text-red-700 dark:text-red-300">{{ $message }}</p>
+                            @enderror
+
+                            @if ($this->alasanTerlihat($id))
+                                <div class="mt-3">
+                                    <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400" for="alasan-{{ $id }}">Alasan</label>
+                                    <input id="alasan-{{ $id }}" type="text" wire:model="note.{{ $id }}" placeholder="Contoh: Demam, acara keluarga, dll" class="w-full rounded-lg border border-zinc-300 text-sm dark:border-zinc-700" />
+                                    @error("note.{{ $id }}")
+                                        <p class="mt-1 text-xs text-red-700 dark:text-red-300">{{ $message }}</p>
+                                    @enderror
+                                </div>
+                            @endif
+                        </div>
+                    @endforeach
                 </div>
 
                 <div class="flex justify-end">
