@@ -93,13 +93,14 @@
                 <div>
                     <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300" for="user-nuptk">NUPTK</label>
                     <flux:input id="user-nuptk" wire:model="form.nuptk" inputmode="numeric" />
-                    <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">18 digit angka. Dipakai sebagai identitas login.</p>
+                    <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">18 digit angka.</p>
                     @error('form.nuptk') <p class="mt-1 text-sm text-red-600 dark:text-red-300">{{ $message }}</p> @enderror
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300" for="user-email">Email (opsional)</label>
-                    <flux:input id="user-email" type="email" wire:model="form.email" />
+                    <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300" for="user-email">Email</label>
+                    <flux:input id="user-email" type="email" wire:model="form.email" required />
+                    <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Dipakai sebagai identitas login.</p>
                     @error('form.email') <p class="mt-1 text-sm text-red-600 dark:text-red-300">{{ $message }}</p> @enderror
                 </div>
 

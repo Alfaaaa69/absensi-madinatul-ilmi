@@ -158,6 +158,7 @@ class UserManagementTest extends TestCase
             ->call('create')
             ->set('form.name', 'Dewi Lestari')
             ->set('form.nuptk', '100000000000000020')
+            ->set('form.email', 'dewi@sekolah.sch.id')
             ->set('form.role', UserRole::Guru->value)
             ->set('password', 'Rahasia-kuat-123')
             ->set('password_confirmation', 'Rahasia-kuat-123')
@@ -219,7 +220,7 @@ class UserManagementTest extends TestCase
             ->assertHasErrors('password');
     }
 
-    public function test_email_boleh_kosong(): void
+    public function test_email_wajib_diisi(): void
     {
         $admin = $this->admin();
 
@@ -233,12 +234,29 @@ class UserManagementTest extends TestCase
             ->set('password', 'Rahasia-kuat-123')
             ->set('password_confirmation', 'Rahasia-kuat-123')
             ->call('save')
-            ->assertHasNoErrors();
+            ->assertHasErrors('form.email');
 
-        $this->assertDatabaseHas('users', [
+        $this->assertDatabaseMissing('users', [
             'nuptk' => '100000000000000050',
-            'email' => null,
         ]);
+    }
+
+    public function test_email_harus_unik(): void
+    {
+        $admin = $this->admin();
+        User::factory()->create(['email' => 'dipakai@sekolah.sch.id']);
+
+        Livewire::actingAs($admin)
+            ->test(UserManagement::class)
+            ->call('create')
+            ->set('form.name', 'Email Ganda')
+            ->set('form.nuptk', '100000000000000051')
+            ->set('form.email', 'dipakai@sekolah.sch.id')
+            ->set('form.role', UserRole::Guru->value)
+            ->set('password', 'Rahasia-kuat-123')
+            ->set('password_confirmation', 'Rahasia-kuat-123')
+            ->call('save')
+            ->assertHasErrors('form.email');
     }
 
     public function test_admin_bisa_mengubah_user_lama_tanpa_mengubah_password(): void

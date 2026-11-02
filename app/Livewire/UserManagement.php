@@ -140,7 +140,8 @@ class UserManagement extends Component
                 'max:20',
                 Rule::unique('users', 'nuptk')->ignore($this->form['id']),
             ],
-            'form.email' => ['nullable', 'email', 'max:255'],
+            // Email adalah identitas login, jadi wajib dan harus unik.
+            'form.email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($this->form['id'])],
             'form.role' => ['required', Rule::in([
                 UserRole::Admin->value,
                 UserRole::Guru->value,
