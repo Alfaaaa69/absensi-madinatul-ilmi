@@ -38,7 +38,7 @@
                 class="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 text-sm shadow-sm focus:border-madrasah-500 focus:ring-madrasah-500 dark:border-zinc-700"
             />
             <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                Minimal 12 karakter, ada huruf besar, huruf kecil, dan angka.
+                Minimal 12 karakter, ada huruf kapital, huruf kecil, angka, dan simbol.
             </p>
             @error('password')
                 <p class="mt-1 text-sm text-red-600 dark:text-red-300">{{ $message }}</p>

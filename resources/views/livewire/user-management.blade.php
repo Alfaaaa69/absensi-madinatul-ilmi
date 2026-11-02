@@ -122,7 +122,7 @@
                     <div>
                         <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300" for="user-password">Password</label>
                         <flux:input id="user-password" type="password" wire:model="password" />
-                        <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Minimal 12 karakter.</p>
+                        <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Minimal 12 karakter, ada huruf kapital, huruf kecil, angka, dan simbol.</p>
                         @error('password') <p class="mt-1 text-sm text-red-600 dark:text-red-300">{{ $message }}</p> @enderror
                     </div>
 
